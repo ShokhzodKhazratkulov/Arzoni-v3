@@ -52,4 +52,13 @@ export interface Review {
   dishId: string;
 }
 
+export interface Banner {
+  id: string;
+  image_url: string;
+  restaurant_id: string;
+  expiry_date: string;
+  created_at: string;
+  restaurant_name?: string; // For display in admin
+}
+
 export type SortOption = 'price' | 'rating' | 'distance';

@@ -14,25 +14,26 @@
     - List of all restaurants with search.
     - **Promote (Sponsored)**: Toggles `is_sponsored` field. Sponsored items jump to the top of the main list.
     - **Verify**: Toggles `is_verified` field. Adds a blue checkmark badge.
-- **Placeholders**: Tabs for "Ad Banners" and "Push Notifications" are created but logic is not yet implemented.
+- **Banner Manager**: 
+    - Full CRUD for ad banners.
+    - Image upload with compression.
+    - Link banners to specific restaurants.
+    - Set expiry dates.
+- **Placeholders**: Tab for "Push Notifications" is created but logic is not yet implemented.
 
 ### 3. Monetization Features
 - **Sponsored Listings**: Implemented sorting logic in `App.tsx` that prioritizes `isSponsored: true` restaurants regardless of other filters/sorts.
+- **Ad Banners (Billboard)**: Horizontal carousel at the top of the home screen displaying active promotions.
 - **Visual Badges**: "Sponsored" and "Verified" badges appear on cards and in details modals.
 
 ### 4. Database Schema Updates
-The `restaurants` table in Supabase now includes:
-- `is_sponsored` (boolean, default false)
-- `is_verified` (boolean, default false)
+The Supabase database now includes:
+- `restaurants` table: `is_sponsored`, `is_verified`.
+- `banners` table: `id`, `image_url`, `restaurant_id`, `expiry_date`, `created_at`.
 
 ---
 
 ## Roadmap & Next Steps for the Next AI Agent
-
-### Phase 1: Ad Banners (Billboard)
-- Create a `banners` table in Supabase (id, image_url, restaurant_id, expiry_date).
-- Build the "Banner Manager" in the Admin Center to upload images and link them to restaurants.
-- Add a Carousel component at the top of the Home screen (above filters) to display active banners.
 
 ### Phase 2: Push Notifications
 - Integrate Firebase Cloud Messaging (FCM) or a similar service.

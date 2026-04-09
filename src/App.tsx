@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } 
 import { supabase } from './supabase';
 import imageCompression from 'browser-image-compression';
 import { seedDatabase } from './seed';
-import { Restaurant, SortOption, Review } from './types';
+import { Restaurant, SortOption, Review, Banner } from './types';
 import { DISH_TYPES, CLOTHING_TYPES, PRICE_RANGES, CLOTHING_PRICE_RANGES } from './constants';
 import Navbar from './components/Navbar';
 import FilterBar from './components/FilterBar';
@@ -112,6 +112,7 @@ function AppContent() {
   const { isAdmin } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<'food' | 'clothes'>('food');
   const [selectedDishes, setSelectedDishes] = useState<string[]>([]);
@@ -160,6 +161,22 @@ function AppContent() {
     };
 
     fetchRestaurants();
+
+    const fetchBanners = async () => {
+      const { data, error } = await supabase
+        .from('banners')
+        .select('*')
+        .gte('expiry_date', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching banners:', error);
+      } else {
+        setBanners(data as Banner[]);
+      }
+    };
+
+    fetchBanners();
 
     // Set up real-time subscription
     const channel = supabase
@@ -589,6 +606,36 @@ function AppContent() {
         <Navbar onAdminClick={() => setShowAdmin(true)} />
         
         <main className="flex-1 flex flex-col">
+          {/* Banner Carousel */}
+          {banners.length > 0 && (
+            <div className="w-full bg-white border-b border-gray-100 py-6 overflow-hidden">
+              <div className="max-w-7xl mx-auto px-6">
+                <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+                  {banners.map((banner) => (
+                    <motion.div 
+                      key={banner.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="min-w-[85%] sm:min-w-[60%] lg:min-w-[45%] aspect-[21/9] rounded-3xl overflow-hidden relative snap-center shadow-xl shadow-gray-200/50 group cursor-pointer"
+                    >
+                      <img 
+                        src={banner.image_url} 
+                        alt="Ad Banner" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
+                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30">
+                          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">Featured Spot</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <FilterBar 
             selectedCategory={selectedCategory}
             setSelectedCategory={(cat) => {
