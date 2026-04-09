@@ -14,7 +14,8 @@ import AdminDashboard from './components/AdminDashboard';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import RestaurantDetailsModal from './components/RestaurantDetailsModal';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 
 // Error Boundary Component
@@ -113,6 +114,9 @@ function AppContent() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [selectedRestaurantForDetails, setSelectedRestaurantForDetails] = useState<Restaurant | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<'food' | 'clothes'>('food');
   const [selectedDishes, setSelectedDishes] = useState<string[]>([]);
@@ -165,18 +169,30 @@ function AppContent() {
     const fetchBanners = async () => {
       const { data, error } = await supabase
         .from('banners')
-        .select('*')
+        .select('*, restaurants(name)')
         .gte('expiry_date', new Date().toISOString())
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching banners:', error);
       } else {
-        setBanners(data as Banner[]);
+        const mappedBanners = (data || []).map((b: any) => ({
+          ...b,
+          restaurant_name: b.restaurants?.name
+        }));
+        setBanners(mappedBanners as Banner[]);
       }
     };
 
     fetchBanners();
+
+    // Auto-switch banners every 3 seconds
+    let bannerInterval: NodeJS.Timeout;
+    if (banners.length > 1) {
+      bannerInterval = setInterval(() => {
+        setActiveBannerIndex((prev) => (prev + 1) % banners.length);
+      }, 3000);
+    }
 
     // Set up real-time subscription
     const channel = supabase
@@ -596,6 +612,14 @@ function AppContent() {
     }
   };
 
+  const handleBannerClick = (banner: Banner) => {
+    const restaurant = restaurants.find(r => r.id === banner.restaurant_id);
+    if (restaurant) {
+      setSelectedRestaurantForDetails(restaurant);
+      setIsDetailsModalOpen(true);
+    }
+  };
+
   if (showAdmin && isAdmin) {
     return <AdminDashboard onBack={() => setShowAdmin(false)} />;
   }
@@ -608,29 +632,52 @@ function AppContent() {
         <main className="flex-1 flex flex-col">
           {/* Banner Carousel */}
           {banners.length > 0 && (
-            <div className="w-full bg-white border-b border-gray-100 py-6 overflow-hidden">
-              <div className="max-w-7xl mx-auto px-6">
-                <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
-                  {banners.map((banner) => (
+            <div className="w-full bg-white border-b border-gray-100 pt-1 pb-2 overflow-hidden">
+              <div className="max-w-[1600px] mx-auto px-2 sm:px-4">
+                <div className="relative h-[160px] sm:h-[180px] lg:h-[200px] w-full overflow-hidden rounded-3xl shadow-xl shadow-gray-200/50">
+                  <AnimatePresence mode="wait">
                     <motion.div 
-                      key={banner.id}
-                      initial={{ opacity: 0, x: 20 }}
+                      key={banners[activeBannerIndex].id}
+                      initial={{ opacity: 0, x: 50 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="min-w-[85%] sm:min-w-[60%] lg:min-w-[45%] aspect-[21/9] rounded-3xl overflow-hidden relative snap-center shadow-xl shadow-gray-200/50 group cursor-pointer"
+                      exit={{ opacity: 0, x: -50 }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      onClick={() => handleBannerClick(banners[activeBannerIndex])}
+                      className="absolute inset-0 group cursor-pointer"
                     >
                       <img 
-                        src={banner.image_url} 
-                        alt="Ad Banner" 
+                        src={banners[activeBannerIndex].image_url} 
+                        alt={banners[activeBannerIndex].restaurant_name || "Ad Banner"} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4 sm:p-6">
                         <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30">
                           <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-                          <span className="text-[10px] font-black text-white uppercase tracking-widest">Featured Spot</span>
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                            {banners[activeBannerIndex].restaurant_name || t('sponsored')}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
-                  ))}
+                  </AnimatePresence>
+
+                  {/* Indicators */}
+                  {banners.length > 1 && (
+                    <div className="absolute bottom-4 right-6 flex gap-1.5 z-10">
+                      {banners.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveBannerIndex(idx);
+                          }}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            idx === activeBannerIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -691,6 +738,22 @@ function AppContent() {
           initialRestaurant={initialRestaurantForModal}
           selectedCategory={selectedCategory}
         />
+
+        {selectedRestaurantForDetails && (
+          <RestaurantDetailsModal 
+            isOpen={isDetailsModalOpen}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedRestaurantForDetails(null);
+            }}
+            restaurant={selectedRestaurantForDetails}
+            onAddReview={() => {
+              setIsDetailsModalOpen(false);
+              handleOpenReviewModal(selectedRestaurantForDetails);
+            }}
+            selectedCategory={selectedCategory}
+          />
+        )}
 
         {loading && (
           <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[200] flex items-center justify-center">

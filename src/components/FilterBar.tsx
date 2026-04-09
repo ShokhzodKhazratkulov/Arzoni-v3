@@ -42,7 +42,7 @@ export default function FilterBar({
   const currentPriceRanges = selectedCategory === 'food' ? PRICE_RANGES : CLOTHING_PRICE_RANGES;
 
   return (
-    <div className="bg-white border-b border-gray-100 px-4 py-4 space-y-4">
+    <div className="bg-white border-b border-gray-100 px-4 pt-2 pb-4 space-y-4">
       {/* Category Switcher */}
       <div className="max-w-7xl mx-auto flex gap-3">
         <button
