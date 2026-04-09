@@ -405,9 +405,7 @@ export default function RestaurantDetailsModal({
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-md">{restaurant.name}</h2>
                     {restaurant.isVerified && (
-                      <div className="flex items-center justify-center bg-blue-500 text-white rounded-full p-1 shadow-lg shadow-blue-500/50" title={t('verified')}>
-                        <CheckCircle2 size={16} fill="currentColor" className="text-white" />
-                      </div>
+                      <CheckCircle2 size={24} className="text-blue-400 drop-shadow-md" />
                     )}
                     {restaurant.isSponsored && (
                       <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500 text-white rounded-md shadow-sm">

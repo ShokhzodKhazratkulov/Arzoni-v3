@@ -115,6 +115,7 @@ function AppContent() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [selectedRestaurantForDetails, setSelectedRestaurantForDetails] = useState<Restaurant | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -169,7 +170,7 @@ function AppContent() {
     const fetchBanners = async () => {
       const { data, error } = await supabase
         .from('banners')
-        .select('*, restaurants(name)')
+        .select('*, restaurants(name, category)')
         .gte('expiry_date', new Date().toISOString())
         .order('created_at', { ascending: false });
 
@@ -178,21 +179,14 @@ function AppContent() {
       } else {
         const mappedBanners = (data || []).map((b: any) => ({
           ...b,
-          restaurant_name: b.restaurants?.name
+          restaurant_name: b.restaurants?.name,
+          category: b.restaurants?.category
         }));
         setBanners(mappedBanners as Banner[]);
       }
     };
 
     fetchBanners();
-
-    // Auto-switch banners every 3 seconds
-    let bannerInterval: NodeJS.Timeout;
-    if (banners.length > 1) {
-      bannerInterval = setInterval(() => {
-        setActiveBannerIndex((prev) => (prev + 1) % banners.length);
-      }, 3000);
-    }
 
     // Set up real-time subscription
     const channel = supabase
@@ -612,6 +606,25 @@ function AppContent() {
     }
   };
 
+  const filteredBanners = useMemo(() => {
+    return banners.filter(b => b.category === selectedCategory);
+  }, [banners, selectedCategory]);
+
+  useEffect(() => {
+    if (filteredBanners.length <= 1 || isBannerPaused) return;
+
+    const interval = setInterval(() => {
+      setActiveBannerIndex((prev) => (prev + 1) % filteredBanners.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [filteredBanners.length, isBannerPaused]);
+
+  // Reset index when category changes
+  useEffect(() => {
+    setActiveBannerIndex(0);
+  }, [selectedCategory]);
+
   const handleBannerClick = (banner: Banner) => {
     const restaurant = restaurants.find(r => r.id === banner.restaurant_id);
     if (restaurant) {
@@ -630,41 +643,64 @@ function AppContent() {
         <Navbar onAdminClick={() => setShowAdmin(true)} />
         
         <main className="flex-1 flex flex-col">
-          {/* Banner Carousel */}
-          {banners.length > 0 && (
+          {/* Banner Section */}
+          {filteredBanners.length > 0 && (
             <div className="w-full bg-white border-b border-gray-100 pt-1 pb-2 overflow-hidden">
               <div className="max-w-[1600px] mx-auto px-2 sm:px-4">
-                <div className="relative h-[160px] sm:h-[180px] lg:h-[200px] w-full overflow-hidden rounded-3xl shadow-xl shadow-gray-200/50">
+                {/* Mobile/Tablet Carousel */}
+                <div 
+                  className="lg:hidden relative h-[140px] sm:h-[160px] w-full overflow-hidden rounded-3xl shadow-xl shadow-gray-200/50"
+                  onMouseEnter={() => setIsBannerPaused(true)}
+                  onMouseLeave={() => setIsBannerPaused(false)}
+                  onTouchStart={() => setIsBannerPaused(true)}
+                  onTouchEnd={() => setIsBannerPaused(false)}
+                >
                   <AnimatePresence mode="wait">
-                    <motion.div 
-                      key={banners[activeBannerIndex].id}
-                      initial={{ opacity: 0, x: 50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -50 }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      onClick={() => handleBannerClick(banners[activeBannerIndex])}
-                      className="absolute inset-0 group cursor-pointer"
-                    >
-                      <img 
-                        src={banners[activeBannerIndex].image_url} 
-                        alt={banners[activeBannerIndex].restaurant_name || "Ad Banner"} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4 sm:p-6">
-                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30">
-                          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-                          <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                            {banners[activeBannerIndex].restaurant_name || t('sponsored')}
-                          </span>
+                    {filteredBanners[activeBannerIndex] && (
+                      <motion.div 
+                        key={filteredBanners[activeBannerIndex].id}
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        onDragEnd={(_, info) => {
+                          if (info.offset.x > 50) {
+                            setActiveBannerIndex((prev) => (prev - 1 + filteredBanners.length) % filteredBanners.length);
+                          } else if (info.offset.x < -50) {
+                            setActiveBannerIndex((prev) => (prev + 1) % filteredBanners.length);
+                          }
+                        }}
+                        className="absolute inset-0 group touch-pan-y"
+                      >
+                        <img 
+                          src={filteredBanners[activeBannerIndex].image_url} 
+                          alt={filteredBanners[activeBannerIndex].restaurant_name || "Ad Banner"} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4 sm:p-6">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBannerClick(filteredBanners[activeBannerIndex]);
+                            }}
+                            className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30 hover:bg-white/40 transition-colors cursor-pointer active:scale-95"
+                          >
+                            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                              {filteredBanners[activeBannerIndex].restaurant_name || t('sponsored')}
+                            </span>
+                          </button>
                         </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
 
                   {/* Indicators */}
-                  {banners.length > 1 && (
+                  {filteredBanners.length > 1 && (
                     <div className="absolute bottom-4 right-6 flex gap-1.5 z-10">
-                      {banners.map((_, idx) => (
+                      {filteredBanners.map((_, idx) => (
                         <button
                           key={idx}
                           onClick={(e) => {
@@ -678,6 +714,37 @@ function AppContent() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Desktop Grid (3 columns) */}
+                <div className="hidden lg:grid grid-cols-3 gap-4">
+                  {filteredBanners.slice(0, 3).map((banner) => (
+                    <motion.div 
+                      key={banner.id}
+                      whileHover={{ y: -4 }}
+                      className="relative h-[130px] rounded-2xl overflow-hidden shadow-lg shadow-gray-200/50 group border border-gray-100"
+                    >
+                      <img 
+                        src={banner.image_url} 
+                        alt={banner.restaurant_name || "Ad Banner"} 
+                        className="w-full h-full object-cover" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBannerClick(banner);
+                          }}
+                          className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/30 hover:bg-white/40 transition-colors cursor-pointer"
+                        >
+                          <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                          <span className="text-[9px] font-black text-white uppercase tracking-widest">
+                            {banner.restaurant_name || t('sponsored')}
+                          </span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             </div>

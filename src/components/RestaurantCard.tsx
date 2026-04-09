@@ -140,13 +140,11 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
             <h3 
               id="restaurant-name"
               onClick={() => setIsDetailsOpen(true)}
-              className={`font-black text-gray-900 text-xl leading-tight cursor-pointer hover:${themeText} transition-colors inline-block tracking-tight flex items-center gap-1.5`}
+              className={`font-black text-gray-900 text-xl leading-tight cursor-pointer hover:${themeText} transition-colors inline-block tracking-tight`}
             >
               {restaurant.name}
               {restaurant.isVerified && (
-                <div className="flex items-center justify-center bg-blue-500 text-white rounded-full p-0.5 shadow-sm shadow-blue-200" title={t('verified')}>
-                  <CheckCircle2 size={12} fill="currentColor" className="text-white" />
-                </div>
+                <CheckCircle2 size={16} className="inline-block ml-1.5 text-blue-500" />
               )}
             </h3>
             {restaurant.isSponsored && (

@@ -59,6 +59,7 @@ export interface Banner {
   expiry_date: string;
   created_at: string;
   restaurant_name?: string; // For display in admin
+  category?: 'food' | 'clothes';
 }
 
 export type SortOption = 'price' | 'rating' | 'distance';
