@@ -1,21 +1,17 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import admin from "firebase-admin";
+import * as OneSignal from 'onesignal-node';
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// Initialize Firebase Admin
-try {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID || "gen-lang-client-0792523954"
-  });
-} catch (error) {
-  console.error("Firebase Admin initialization error:", error);
-}
+// Initialize OneSignal Client
+const oneSignalClient = new OneSignal.Client(
+  process.env.VITE_ONESIGNAL_APP_ID || "",
+  process.env.ONESIGNAL_REST_API_KEY || ""
+);
 
 // Initialize Supabase Admin
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
@@ -42,57 +38,27 @@ async function startServer() {
     }
 
     try {
-      // 1. Fetch all FCM tokens from Supabase
-      const { data: tokens, error: fetchError } = await supabase
-        .from('user_tokens')
-        .select('fcm_token');
-
-      if (fetchError) throw fetchError;
-
-      if (!tokens || tokens.length === 0) {
-        return res.status(200).json({ message: "No users have enabled notifications yet." });
-      }
-
-      const fcmTokens = tokens.map(t => t.fcm_token);
-
-      // 2. Send multicast message via FCM
-      const message = {
-        notification: { title, body },
-        tokens: fcmTokens,
+      const notification = {
+        contents: {
+          en: body,
+        },
+        headings: {
+          en: title,
+        },
+        included_segments: ['All'], // Send to all subscribed users
       };
 
-      const response = await admin.messaging().sendEachForMulticast(message);
+      const response = await oneSignalClient.createNotification(notification);
       
-      console.log(`${response.successCount} messages were sent successfully`);
-
-      // 3. Cleanup invalid tokens if any
-      if (response.failureCount > 0) {
-        const failedTokens: string[] = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            const errorCode = resp.error?.code;
-            if (errorCode === 'messaging/invalid-registration-token' || 
-                errorCode === 'messaging/registration-token-not-registered') {
-              failedTokens.push(fcmTokens[idx]);
-            }
-          }
-        });
-
-        if (failedTokens.length > 0) {
-          await supabase
-            .from('user_tokens')
-            .delete()
-            .in('fcm_token', failedTokens);
-        }
-      }
+      console.log('OneSignal notification sent:', response.body);
 
       res.json({ 
-        message: `Successfully sent to ${response.successCount} users.`,
-        successCount: response.successCount,
-        failureCount: response.failureCount
+        message: `Notification broadcast sent successfully.`,
+        id: response.body.id,
+        recipients: response.body.recipients
       });
     } catch (error) {
-      console.error("Error sending notification:", error);
+      console.error("Error sending OneSignal notification:", error);
       res.status(500).json({ message: "Failed to send notification.", error: String(error) });
     }
   });
