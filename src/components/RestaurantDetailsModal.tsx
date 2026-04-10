@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Star, MapPin, Navigation, User, ThumbsUp, ThumbsDown, MoreVertical, Edit2, Camera, Check, X as CloseIcon, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -62,6 +62,18 @@ export default function RestaurantDetailsModal({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDirectionsOpen, setIsDirectionsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSponsoredValid = useMemo(() => {
+    if (!restaurant.isSponsored) return false;
+    if (!restaurant.sponsoredExpiry) return true;
+    return new Date(restaurant.sponsoredExpiry) > new Date();
+  }, [restaurant.isSponsored, restaurant.sponsoredExpiry]);
+
+  const isVerifiedValid = useMemo(() => {
+    if (!restaurant.isVerified) return false;
+    if (!restaurant.verifiedExpiry) return true;
+    return new Date(restaurant.verifiedExpiry) > new Date();
+  }, [restaurant.isVerified, restaurant.verifiedExpiry]);
 
   const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#6366F1';
   const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-indigo-500';
@@ -404,10 +416,10 @@ export default function RestaurantDetailsModal({
                 ) : (
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-md">{restaurant.name}</h2>
-                    {restaurant.isVerified && (
+                    {isVerifiedValid && (
                       <CheckCircle2 size={24} className="text-blue-400 drop-shadow-md" />
                     )}
-                    {restaurant.isSponsored && (
+                    {isSponsoredValid && (
                       <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500 text-white rounded-md shadow-sm">
                         {t('sponsored')}
                       </span>

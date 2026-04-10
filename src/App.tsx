@@ -158,7 +158,9 @@ function AppContent() {
           dishPrices: r.dish_prices,
           dishStats: r.dish_stats,
           isSponsored: r.is_sponsored,
-          isVerified: r.is_verified
+          isVerified: r.is_verified,
+          sponsoredExpiry: r.sponsored_expiry,
+          verifiedExpiry: r.verified_expiry
         }));
         setRestaurants(mappedData as Restaurant[]);
       }
@@ -277,9 +279,12 @@ function AppContent() {
 
       return matchesDishes && matchesPrice;
     }).sort((a, b) => {
-      // Priority 1: Sponsored status
-      if (a.isSponsored !== b.isSponsored) {
-        return a.isSponsored ? -1 : 1;
+      // Priority 1: Sponsored status (check expiry)
+      const isASponsored = a.isSponsored && (!a.sponsoredExpiry || new Date(a.sponsoredExpiry) > new Date());
+      const isBSponsored = b.isSponsored && (!b.sponsoredExpiry || new Date(b.sponsoredExpiry) > new Date());
+
+      if (isASponsored !== isBSponsored) {
+        return isASponsored ? -1 : 1;
       }
 
       const getEffectivePrice = (r: Restaurant) => {

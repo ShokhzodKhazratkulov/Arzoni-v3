@@ -36,6 +36,8 @@ export interface Restaurant {
   };
   isSponsored?: boolean;
   isVerified?: boolean;
+  sponsoredExpiry?: string;
+  verifiedExpiry?: string;
 }
 
 export interface Review {

@@ -38,11 +38,13 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listingCategory, setListingCategory] = useState<'all' | 'food' | 'clothes'>('all');
   
   // Banner Form State
   const [isAddingBanner, setIsAddingBanner] = useState(false);
   const [bannerImage, setBannerImage] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string>('');
+  const [bannerCategory, setBannerCategory] = useState<'food' | 'clothes'>('food');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -69,7 +71,9 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         reviewCount: r.review_count,
         photoUrl: r.photo_url,
         isSponsored: r.is_sponsored,
-        isVerified: r.is_verified
+        isVerified: r.is_verified,
+        sponsoredExpiry: r.sponsored_expiry,
+        verifiedExpiry: r.verified_expiry
       }));
       setRestaurants(mappedData as Restaurant[]);
     }
@@ -92,7 +96,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
     } else {
       const mappedBanners = (data || []).map(b => ({
         ...b,
-        restaurant_name: b.restaurants?.name
+        restaurant_name: b.restaurants?.name,
+        category: b.category
       }));
       setBanners(mappedBanners as Banner[]);
     }
@@ -142,7 +147,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         .insert({
           image_url: publicUrl,
           restaurant_id: selectedRestaurantId,
-          expiry_date: expiryDate
+          expiry_date: expiryDate,
+          category: bannerCategory
         });
 
       if (dbError) throw dbError;
@@ -175,36 +181,69 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
     }
   };
 
-  const toggleSponsored = async (id: string, currentStatus: boolean) => {
+  const toggleSponsored = async (id: string, currentStatus: boolean, expiryDate?: string) => {
     const { error } = await supabase
       .from('restaurants')
-      .update({ is_sponsored: !currentStatus })
+      .update({ 
+        is_sponsored: !currentStatus,
+        sponsored_expiry: !currentStatus ? (expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()) : null
+      })
       .eq('id', id);
 
     if (error) {
       console.error('Error updating sponsored status:', error);
     } else {
-      setRestaurants(prev => prev.map(r => r.id === id ? { ...r, isSponsored: !currentStatus } : r));
+      setRestaurants(prev => prev.map(r => r.id === id ? { 
+        ...r, 
+        isSponsored: !currentStatus,
+        sponsoredExpiry: !currentStatus ? (expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()) : undefined
+      } : r));
     }
   };
 
-  const toggleVerified = async (id: string, currentStatus: boolean) => {
+  const toggleVerified = async (id: string, currentStatus: boolean, expiryDate?: string) => {
     const { error } = await supabase
       .from('restaurants')
-      .update({ is_verified: !currentStatus })
+      .update({ 
+        is_verified: !currentStatus,
+        verified_expiry: !currentStatus ? (expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()) : null
+      })
       .eq('id', id);
 
     if (error) {
       console.error('Error updating verified status:', error);
     } else {
-      setRestaurants(prev => prev.map(r => r.id === id ? { ...r, isVerified: !currentStatus } : r));
+      setRestaurants(prev => prev.map(r => r.id === id ? { 
+        ...r, 
+        isVerified: !currentStatus,
+        verifiedExpiry: !currentStatus ? (expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()) : undefined
+      } : r));
     }
   };
 
-  const filteredRestaurants = restaurants.filter(r => 
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const updateExpiry = async (id: string, type: 'sponsored' | 'verified', date: string) => {
+    const field = type === 'sponsored' ? 'sponsored_expiry' : 'verified_expiry';
+    const { error } = await supabase
+      .from('restaurants')
+      .update({ [field]: date })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating ${type} expiry:`, error);
+    } else {
+      setRestaurants(prev => prev.map(r => r.id === id ? { 
+        ...r, 
+        [type === 'sponsored' ? 'sponsoredExpiry' : 'verifiedExpiry']: date 
+      } : r));
+    }
+  };
+
+  const filteredRestaurants = restaurants.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = listingCategory === 'all' || r.category === listingCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const stats = {
     total: restaurants.length,
@@ -339,7 +378,35 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                 className="space-y-6"
               >
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                  <h2 className="text-xl font-black text-gray-900">Manage Listings</h2>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-black text-gray-900">Manage Listings</h2>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                      <button 
+                        onClick={() => setListingCategory('all')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                          listingCategory === 'all' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button 
+                        onClick={() => setListingCategory('food')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                          listingCategory === 'food' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        Food
+                      </button>
+                      <button 
+                        onClick={() => setListingCategory('clothes')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                          listingCategory === 'clothes' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        Clothes
+                      </button>
+                    </div>
+                  </div>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
@@ -393,31 +460,51 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-center">
-                                <button 
-                                  onClick={() => toggleSponsored(r.id!, r.isSponsored || false)}
-                                  className={`p-2 rounded-xl transition-all ${
-                                    r.isSponsored 
-                                      ? 'bg-amber-50 text-amber-600 border border-amber-100' 
-                                      : 'bg-gray-50 text-gray-300 border border-gray-100 hover:text-amber-400'
-                                  }`}
-                                  title={r.isSponsored ? "Remove Promotion" : "Promote to Top"}
-                                >
-                                  <Star size={18} className={r.isSponsored ? "fill-amber-500" : ""} />
-                                </button>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col items-center gap-2">
+                                  <button 
+                                    onClick={() => toggleSponsored(r.id!, r.isSponsored || false)}
+                                    className={`p-2 rounded-xl transition-all ${
+                                      r.isSponsored 
+                                        ? 'bg-amber-50 text-amber-600 border border-amber-100' 
+                                        : 'bg-gray-50 text-gray-300 border border-gray-100 hover:text-amber-400'
+                                    }`}
+                                    title={r.isSponsored ? "Remove Promotion" : "Promote to Top"}
+                                  >
+                                    <Star size={18} className={r.isSponsored ? "fill-amber-500" : ""} />
+                                  </button>
+                                  {r.isSponsored && (
+                                    <input 
+                                      type="date" 
+                                      value={r.sponsoredExpiry ? new Date(r.sponsoredExpiry).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => updateExpiry(r.id!, 'sponsored', new Date(e.target.value).toISOString())}
+                                      className="text-[9px] font-bold bg-transparent border-none focus:ring-0 p-0 text-amber-600 w-24 text-center"
+                                    />
+                                  )}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 text-center">
-                                <button 
-                                  onClick={() => toggleVerified(r.id!, r.isVerified || false)}
-                                  className={`p-2 rounded-xl transition-all ${
-                                    r.isVerified 
-                                      ? 'bg-blue-50 text-blue-600 border border-blue-100' 
-                                      : 'bg-gray-50 text-gray-300 border border-gray-100 hover:text-blue-400'
-                                  }`}
-                                  title={r.isVerified ? "Unverify" : "Mark as Verified"}
-                                >
-                                  <CheckCircle2 size={18} />
-                                </button>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col items-center gap-2">
+                                  <button 
+                                    onClick={() => toggleVerified(r.id!, r.isVerified || false)}
+                                    className={`p-2 rounded-xl transition-all ${
+                                      r.isVerified 
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                        : 'bg-gray-50 text-gray-300 border border-gray-100 hover:text-blue-400'
+                                    }`}
+                                    title={r.isVerified ? "Unverify" : "Mark as Verified"}
+                                  >
+                                    <CheckCircle2 size={18} />
+                                  </button>
+                                  {r.isVerified && (
+                                    <input 
+                                      type="date" 
+                                      value={r.verifiedExpiry ? new Date(r.verifiedExpiry).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => updateExpiry(r.id!, 'verified', new Date(e.target.value).toISOString())}
+                                      className="text-[9px] font-bold bg-transparent border-none focus:ring-0 p-0 text-blue-600 w-24 text-center"
+                                    />
+                                  )}
+                                </div>
                               </td>
                               <td className="px-6 py-4 text-right">
                                 <button className="p-2 text-gray-300 hover:text-gray-600 transition-colors">
@@ -551,18 +638,52 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                             </div>
                           </div>
 
+                          {/* Category Selection */}
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Banner Category</label>
+                            <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-100">
+                              <button 
+                                onClick={() => {
+                                  setBannerCategory('food');
+                                  setSelectedRestaurantId('');
+                                }}
+                                className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                  bannerCategory === 'food' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                              >
+                                Food
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setBannerCategory('clothes');
+                                  setSelectedRestaurantId('');
+                                }}
+                                className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                  bannerCategory === 'clothes' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                              >
+                                Clothes
+                              </button>
+                            </div>
+                          </div>
+
                           {/* Restaurant Selection */}
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Link to Restaurant</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              Link to {bannerCategory === 'food' ? 'Restaurant' : 'Shop'}
+                            </label>
                             <select 
                               value={selectedRestaurantId}
                               onChange={(e) => setSelectedRestaurantId(e.target.value)}
                               className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                             >
-                              <option value="">Select a restaurant...</option>
-                              {restaurants.map(r => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
-                              ))}
+                              <option value="">Select a {bannerCategory === 'food' ? 'restaurant' : 'shop'}...</option>
+                              {restaurants
+                                .filter(r => r.category === bannerCategory)
+                                .map(r => (
+                                  <option key={r.id} value={r.id}>{r.name}</option>
+                                ))
+                              }
                             </select>
                           </div>
 

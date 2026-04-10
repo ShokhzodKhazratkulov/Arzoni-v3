@@ -78,6 +78,18 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
 
   const isReview = !!(activeDishId && restaurant.dishStats?.[activeDishId]?.bestComment);
 
+  const isSponsoredValid = useMemo(() => {
+    if (!restaurant.isSponsored) return false;
+    if (!restaurant.sponsoredExpiry) return true;
+    return new Date(restaurant.sponsoredExpiry) > new Date();
+  }, [restaurant.isSponsored, restaurant.sponsoredExpiry]);
+
+  const isVerifiedValid = useMemo(() => {
+    if (!restaurant.isVerified) return false;
+    if (!restaurant.verifiedExpiry) return true;
+    return new Date(restaurant.verifiedExpiry) > new Date();
+  }, [restaurant.isVerified, restaurant.verifiedExpiry]);
+
   // Calculate popularity: if a dish is active, use its stats. 
   // Otherwise, use the most popular dish's stats for this restaurant.
   const popularityPercent = useMemo(() => {
@@ -143,11 +155,11 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
               className={`font-black text-gray-900 text-xl leading-tight cursor-pointer hover:${themeText} transition-colors inline-block tracking-tight`}
             >
               {restaurant.name}
-              {restaurant.isVerified && (
+              {isVerifiedValid && (
                 <CheckCircle2 size={16} className="inline-block ml-1.5 text-blue-500" />
               )}
             </h3>
-            {restaurant.isSponsored && (
+            {isSponsoredValid && (
               <div className="mt-1">
                 <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-md">
                   {t('sponsored')}
