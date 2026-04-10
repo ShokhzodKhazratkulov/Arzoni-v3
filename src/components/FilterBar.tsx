@@ -129,7 +129,7 @@ export default function FilterBar({
               key={range.id}
               onClick={() => setSelectedPriceRange(range.id)}
               className={cn(
-                "px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold border transition-all truncate",
+                "px-2 py-1.5 rounded-xl text-[12.4px] font-bold border transition-all truncate",
                 selectedPriceRange === range.id
                   ? "bg-orange-500 text-white border-orange-500 shadow-sm"
                   : "bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-500"

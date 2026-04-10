@@ -217,7 +217,7 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
       </Map>
 
       {/* Floating Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
+      <div className="absolute top-4 right-4 flex flex-col gap-2" style={{ marginRight: '-12px', marginTop: '222px' }}>
         <button
           onClick={handleFindMe}
           className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-all text-[#1D9E75] border border-gray-100"
@@ -229,7 +229,16 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
 
       <button
         onClick={onAddRestaurant}
-        className="absolute bottom-6 left-6 px-6 py-3 bg-[#1D9E75] text-white rounded-full shadow-xl hover:bg-[#168a65] transition-all font-bold flex items-center gap-2 scale-100 active:scale-95 z-10"
+        className="absolute bottom-6 left-6 bg-[#1D9E75] text-white rounded-full shadow-xl hover:bg-[#168a65] transition-all font-bold flex items-center gap-2 scale-100 active:scale-95 z-10"
+        style={{ 
+          marginLeft: '-17px', 
+          marginTop: '-8px', 
+          height: '41.2px', 
+          width: '222.212px', 
+          paddingLeft: '15.4px', 
+          paddingRight: '14.4px', 
+          marginBottom: '-12px' 
+        }}
       >
         <span className="text-xl">+</span>
         {selectedCategory === 'food' ? t('addRestaurant') : t('addShop')}

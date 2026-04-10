@@ -544,7 +544,7 @@ export default function RestaurantDetailsModal({
                 {selectedCategory === 'food' ? t('popularDishes') : t('popularDishesClothes')}
               </h3>
               <div className="flex flex-wrap gap-2">
-                {restaurant.dishes.map(dishId => {
+                {restaurant.dishes.map((dishId, idx) => {
                   const currentTypes = selectedCategory === 'food' ? DISH_TYPES : CLOTHING_TYPES;
                   const dish = currentTypes.find(d => d.id === dishId);
                   const isSelected = selectedDishes.includes(dishId) || 
@@ -552,7 +552,7 @@ export default function RestaurantDetailsModal({
                   
                   return (
                     <span 
-                      key={dishId} 
+                      key={`${dishId}-${idx}`} 
                       className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
                         isSelected 
                           ? `${themeBg} text-white shadow-sm` 
@@ -592,7 +592,7 @@ export default function RestaurantDetailsModal({
                 <div className="space-y-6">
                   {reviews.map((review, idx) => (
                     <motion.div 
-                      key={review.id || idx}
+                      key={review.id || `review-${idx}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}

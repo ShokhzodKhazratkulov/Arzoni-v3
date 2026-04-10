@@ -307,9 +307,9 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
               {selectedCategory === 'food' ? t('existingRestaurants') : t('existingShops')}
             </p>
             <div className="space-y-2">
-              {suggestions.map((r) => (
+              {suggestions.map((r, idx) => (
                 <button
-                  key={r.id}
+                  key={r.id || `suggestion-${idx}`}
                   type="button"
                   onClick={() => {
                     setSelectedRestaurant(r);

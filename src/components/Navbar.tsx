@@ -68,7 +68,7 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
         </div>
 
         {/* Right side: Admin, Auth, and Language */}
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 mt-[-23px] pl-[1px]">
           {/* Admin Dashboard Link (Visible only to Admin) */}
           {isAdmin && (
             <button 
@@ -79,33 +79,6 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
               {t('adminDashboard')}
             </button>
           )}
-
-          {/* Auth Button */}
-          <div className="flex items-center gap-2">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex flex-col items-end leading-tight">
-                  <span className="text-[10px] font-bold text-gray-900 line-clamp-1">{user.user_metadata?.full_name || user.email}</span>
-                  {isAdmin && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Admin</span>}
-                </div>
-                <button 
-                  onClick={() => signOut()}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                  title={t('logout')}
-                >
-                  <LogOut size={18} />
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsLoginOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-xl border border-gray-200 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100 transition-colors"
-              >
-                <LogIn size={14} />
-                <span className="hidden sm:inline">{t('login')}</span>
-              </button>
-            )}
-          </div>
 
           {/* Language Selector Dropdown */}
           <div className="relative" ref={langRef}>
@@ -140,6 +113,33 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* Auth Button */}
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex flex-col items-end leading-tight">
+                  <span className="text-[10px] font-bold text-gray-900 line-clamp-1">{user.user_metadata?.full_name || user.email}</span>
+                  {isAdmin && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Admin</span>}
+                </div>
+                <button 
+                  onClick={() => signOut()}
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  title={t('logout')}
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsLoginOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-xl border border-gray-200 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100 transition-colors"
+              >
+                <LogIn size={14} />
+                <span className="hidden sm:inline">{t('login')}</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile Admin Icon */}

@@ -176,7 +176,7 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {restaurant.dishes.map(dishId => {
+          {restaurant.dishes.map((dishId, idx) => {
             const currentTypes = selectedCategory === 'food' ? DISH_TYPES : CLOTHING_TYPES;
             const dish = currentTypes.find(d => d.id === dishId);
             // Highlight if exact match with dishId OR if it's a custom dish and matches activeDishId (case-insensitive)
@@ -185,7 +185,7 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
             
             return (
               <span 
-                key={dishId} 
+                key={`${dishId}-${idx}`} 
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
                   isSelected 
                     ? `${themeBg} text-white` 
