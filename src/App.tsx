@@ -160,6 +160,7 @@ function AppContent() {
           dishStats: r.dish_stats,
           isSponsored: r.is_sponsored,
           isVerified: r.is_verified,
+          workingHours: r.working_hours,
           sponsoredExpiry: r.sponsored_expiry,
           verifiedExpiry: r.verified_expiry
         }));
@@ -424,6 +425,7 @@ function AppContent() {
         dislikes: 0,
         dish_score: {},
         description: restData.description,
+        working_hours: restData.workingHours,
         submitter: restData.submitter,
         location: restData.location,
         is_sponsored: false,
@@ -547,12 +549,15 @@ function AppContent() {
   const handleAddReview = async (restaurantId: string, reviewData: any) => {
     try {
       setLoading(true);
-      let photoUrl = '';
-      if (reviewData.photoFile) {
-        photoUrl = await uploadImage(reviewData.photoFile, `reviews/${restaurantId}`);
+      let photoUrls: string[] = [];
+      if (reviewData.photoFiles && reviewData.photoFiles.length > 0) {
+        const uploadPromises = reviewData.photoFiles.map((file: File) => 
+          uploadImage(file, `reviews/${restaurantId}`)
+        );
+        photoUrls = await Promise.all(uploadPromises);
       }
 
-      const { photoFile, ...restReviewData } = reviewData;
+      const { photoFiles, ...restReviewData } = reviewData;
       
       // 1. Add review
       const { error: reviewError } = await supabase
@@ -564,7 +569,7 @@ function AppContent() {
           submitter: restReviewData.submitter,
           price_spent: restReviewData.priceSpent,
           dish_id: restReviewData.dishId,
-          photo_url: photoUrl,
+          photo_urls: photoUrls,
           created_at: new Date().toISOString(),
           likes: 0,
           dislikes: 0

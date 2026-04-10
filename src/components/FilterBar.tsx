@@ -80,7 +80,7 @@ export default function FilterBar({
               className={cn(
                 "whitespace-nowrap px-4 py-1.5 rounded-full text-base font-medium border transition-all",
                 selectedDishes.includes(item.id)
-                  ? (selectedCategory === 'food' ? "bg-[#1D9E75] text-white border-[#1D9E75] shadow-sm" : "bg-indigo-500 text-white border-indigo-500 shadow-sm")
+                  ? (selectedCategory === 'food' ? "bg-[#1D9E75] text-white border-[#1D9E75] shadow-sm" : "bg-blue-500 text-white border-blue-500 shadow-sm")
                   : "bg-white text-gray-600 border-gray-200 hover:border-[#1D9E75] hover:text-[#1D9E75]"
               )}
             >
@@ -99,7 +99,7 @@ export default function FilterBar({
             className={cn(
               "whitespace-nowrap px-4 py-1.5 rounded-full text-base font-medium border transition-all",
               selectedDishes.includes('custom')
-                ? (selectedCategory === 'food' ? "bg-[#1D9E75] text-white border-[#1D9E75] shadow-sm" : "bg-indigo-500 text-white border-indigo-500 shadow-sm")
+                ? (selectedCategory === 'food' ? "bg-[#1D9E75] text-white border-[#1D9E75] shadow-sm" : "bg-blue-500 text-white border-blue-500 shadow-sm")
                 : "bg-white text-gray-600 border-gray-200 hover:border-[#1D9E75] hover:text-[#1D9E75]"
             )}
           >
@@ -122,14 +122,14 @@ export default function FilterBar({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 gap-2">
           {currentPriceRanges.map((range) => (
             <button
               key={range.id}
               onClick={() => setSelectedPriceRange(range.id)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-bold border transition-all",
+                "px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold border transition-all truncate",
                 selectedPriceRange === range.id
                   ? "bg-orange-500 text-white border-orange-500 shadow-sm"
                   : "bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-500"

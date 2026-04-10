@@ -61,6 +61,7 @@ export default function RestaurantDetailsModal({
   const [newName, setNewName] = useState(initialRestaurant.name);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDirectionsOpen, setIsDirectionsOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSponsoredValid = useMemo(() => {
@@ -75,14 +76,14 @@ export default function RestaurantDetailsModal({
     return new Date(restaurant.verifiedExpiry) > new Date();
   }, [restaurant.isVerified, restaurant.verifiedExpiry]);
 
-  const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#6366F1';
-  const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-indigo-500';
-  const themeText = selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-indigo-500';
-  const themeBorder = selectedCategory === 'food' ? 'border-[#1D9E75]' : 'border-indigo-500';
-  const themeBorderLight = selectedCategory === 'food' ? 'border-[#1D9E75]/20' : 'border-indigo-500/20';
-  const themeBgLight = selectedCategory === 'food' ? 'bg-[#1D9E75]/10' : 'bg-indigo-500/10';
-  const themeHover = selectedCategory === 'food' ? 'hover:bg-[#168a65]' : 'hover:bg-indigo-600';
-  const themeShadow = selectedCategory === 'food' ? 'shadow-[#1D9E75]/20' : 'shadow-indigo-500/20';
+  const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#3B82F6';
+  const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
+  const themeText = selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
+  const themeBorder = selectedCategory === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
+  const themeBorderLight = selectedCategory === 'food' ? 'border-[#1D9E75]/20' : 'border-blue-500/20';
+  const themeBgLight = selectedCategory === 'food' ? 'bg-[#1D9E75]/10' : 'bg-blue-500/10';
+  const themeHover = selectedCategory === 'food' ? 'hover:bg-[#168a65]' : 'hover:bg-blue-600';
+  const themeShadow = selectedCategory === 'food' ? 'shadow-[#1D9E75]/20' : 'shadow-blue-500/20';
 
   // Sync local restaurant state with prop when it changes
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function RestaurantDetailsModal({
           restaurantId: r.restaurant_id,
           createdAt: r.created_at,
           photoUrl: r.photo_url,
+          photoUrls: r.photo_urls || (r.photo_url ? [r.photo_url] : []),
           priceSpent: r.price_spent,
           dishId: r.dish_id
         }));
@@ -327,12 +329,20 @@ export default function RestaurantDetailsModal({
             {/* Header */}
             <div className="relative h-64 sm:h-80 bg-gray-100">
               {restaurant.photoUrl ? (
-                <img 
-                  src={restaurant.photoUrl} 
-                  alt={restaurant.name} 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+                <button 
+                  onClick={() => restaurant.photoUrl && setPreviewImage(restaurant.photoUrl)}
+                  className="relative w-full h-full group"
+                >
+                  <img 
+                    src={restaurant.photoUrl} 
+                    alt={restaurant.name} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <Camera size={32} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                  </div>
+                </button>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                   <MapPin size={48} />
@@ -512,6 +522,12 @@ export default function RestaurantDetailsModal({
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{t('reviews')}</p>
                 <p className="text-sm font-bold text-gray-900">{restaurant.reviewCount}</p>
               </div>
+              {restaurant.workingHours && (
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{t('workingHours')}</p>
+                  <p className="text-sm font-bold text-gray-900">{restaurant.workingHours}</p>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -617,16 +633,31 @@ export default function RestaurantDetailsModal({
                         {review.comment}
                       </p>
 
-                      {review.photoUrl && (
-                        <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-200 mb-4">
-                          <img 
-                            src={review.photoUrl} 
-                            alt="Review photo" 
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                      )}
+                      {(() => {
+                        const allPhotos = review.photoUrls || (review.photoUrl ? [review.photoUrl] : []);
+                        if (allPhotos.length === 0) return null;
+                        return (
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {allPhotos.map((url, pIdx) => (
+                              <button 
+                                key={pIdx}
+                                onClick={() => setPreviewImage(url)}
+                                className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group"
+                              >
+                                <img 
+                                  src={url} 
+                                  alt={`Review photo ${pIdx + 1}`} 
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                  <Camera size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
 
                       <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
                         <button 
@@ -681,6 +712,35 @@ export default function RestaurantDetailsModal({
           </div>
         </motion.div>
       </div>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewImage(null)}
+            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out"
+          >
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              src={previewImage}
+              alt="Preview"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              referrerPolicy="no-referrer"
+            />
+            <button 
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <DirectionsPicker 
         isOpen={isDirectionsOpen}

@@ -53,21 +53,22 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
     dishes: [] as string[],
     price: 0,
     description: '',
+    workingHours: '',
     submitter: '',
     location: TASHKENT_CENTER,
     category: selectedCategory
   });
 
-  const themeColor = formData.category === 'food' ? '#1D9E75' : '#6366F1';
-  const themeBg = formData.category === 'food' ? 'bg-[#1D9E75]' : 'bg-indigo-500';
-  const themeText = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-indigo-500';
-  const themeBorder = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-indigo-500';
-  const themeRing = formData.category === 'food' ? 'focus:ring-[#1D9E75]' : 'focus:ring-indigo-500';
-  const themeHover = formData.category === 'food' ? 'hover:bg-[#168a65]' : 'hover:bg-indigo-600';
-  const themeBgLight = formData.category === 'food' ? 'bg-[#1D9E75]/5' : 'bg-indigo-500/5';
-  const themeBorderDashed = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-indigo-500';
-  const themeTextLight = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-indigo-500';
-  
+  const themeColor = formData.category === 'food' ? '#1D9E75' : '#3B82F6';
+  const themeBg = formData.category === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
+  const themeText = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
+  const themeBorder = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
+  const themeRing = formData.category === 'food' ? 'focus:ring-[#1D9E75]' : 'focus:ring-blue-500';
+  const themeHover = formData.category === 'food' ? 'hover:bg-[#168a65]' : 'hover:bg-blue-600';
+  const themeBgLight = formData.category === 'food' ? 'bg-[#1D9E75]/5' : 'bg-blue-500/5';
+  const themeBorderDashed = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
+  const themeTextLight = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
+
   const [mode, setMode] = useState<'search' | 'add' | 'review'>('search');
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<Restaurant[]>([]);
@@ -75,6 +76,8 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  const [reviewPhotoFiles, setReviewPhotoFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -103,12 +106,15 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
       setSelectedRestaurant(null);
       setPhoto(null);
       setPhotoFile(null);
+      setReviewPhotos([]);
+      setReviewPhotoFiles([]);
       setFormData({
         name: '',
         address: '',
         dishes: [],
         price: 0,
         description: '',
+        workingHours: '',
         submitter: '',
         location: TASHKENT_CENTER,
         category: selectedCategory
@@ -155,8 +161,33 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
   }, [searchTerm]);
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (mode === 'review') {
+      const newFiles = Array.from(files);
+      const validFiles = newFiles.filter(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          setLocalError(t('imageTooLarge') || "One or more images are too large. Max 5MB per image.");
+          return false;
+        }
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+      setLocalError(null);
+
+      setReviewPhotoFiles(prev => [...prev, ...validFiles]);
+      
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setReviewPhotos(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    } else {
+      const file = files[0];
       if (file.size > 5 * 1024 * 1024) {
         setLocalError(t('imageTooLarge') || "Image is too large. Please select an image smaller than 5MB.");
         return;
@@ -220,7 +251,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
         submitter: reviewData.submitter.trim() || 'Anonymous',
         dishId: finalDishId,
         restaurantId: selectedRestaurant.id,
-        photoFile: photoFile, // Pass the file object
+        photoFiles: reviewPhotoFiles,
         createdAt: new Date().toISOString(),
         likes: 0,
         dislikes: 0
@@ -443,45 +474,82 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
     <div className="space-y-2">
       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
         <Camera size={12} />
-        {t('addPhoto') || "Add Photo (Camera Only)"}
+        {mode === 'review' ? (t('addPhotos') || "Add Photos") : (t('addPhoto') || "Add Profile Photo")}
       </label>
-      <div className="flex gap-4 items-center">
-        {photo ? (
-          <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
-            <img src={photo} alt="Captured" className="w-full h-full object-cover" />
+      <div className="flex flex-wrap gap-4 items-center">
+        {mode === 'review' ? (
+          <>
+            {reviewPhotos.map((p, idx) => (
+              <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+                <img src={p} alt={`Captured ${idx}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewPhotos(prev => prev.filter((_, i) => i !== idx));
+                    setReviewPhotoFiles(prev => prev.filter((_, i) => i !== idx));
+                  }}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            ))}
             <button
               type="button"
-              onClick={() => {
-                setPhoto(null);
-                setPhotoFile(null);
-              }}
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:${themeBorderDashed} hover:${themeText} transition-all`}
             >
-              <X size={20} />
+              <Camera size={24} />
+              <span className="text-[10px] font-bold mt-1 uppercase">{t('addMore') || "Add More"}</span>
             </button>
-          </div>
+          </>
         ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:${themeBorderDashed} hover:${themeText} transition-all`}
-          >
-            <Camera size={24} />
-            <span className="text-[10px] font-bold mt-1 uppercase">{t('takePhoto') || "Take Photo"}</span>
-          </button>
+          photo ? (
+            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+              <img src={photo} alt="Captured" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => {
+                  setPhoto(null);
+                  setPhotoFile(null);
+                }}
+                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:${themeBorderDashed} hover:${themeText} transition-all`}
+            >
+              <Camera size={24} />
+              <span className="text-[10px] font-bold mt-1 uppercase">{t('takePhoto') || "Take Photo"}</span>
+            </button>
+          )
         )}
         <input
           type="file"
           accept="image/*"
-          capture="environment"
+          multiple={mode === 'review'}
+          capture={mode === 'review' ? undefined : "environment"}
           ref={fileInputRef}
           onChange={handleCapture}
           className="hidden"
         />
-        {!photo && (
-          <p className="text-[10px] text-gray-400 italic max-w-[150px]">
-            {t('cameraOnlyHint') || "Tap to open camera and take a photo of the food or place"}
-          </p>
+        {mode === 'review' ? (
+          reviewPhotos.length === 0 && (
+            <p className="text-[10px] text-gray-400 italic max-w-[150px]">
+              {t('reviewPhotoHint') || "Add photos of the food, menu, or place to help others"}
+            </p>
+          )
+        ) : (
+          !photo && (
+            <p className="text-[10px] text-gray-400 italic max-w-[150px]">
+              {t('cameraOnlyHint') || "Tap to open camera and take a photo of the food or place"}
+            </p>
+          )
         )}
       </div>
     </div>
@@ -592,7 +660,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-2",
                 formData.dishes.includes(dish.id)
-                  ? `${formData.category === 'food' ? 'bg-[#1D9E75] border-[#1D9E75]' : 'bg-indigo-500 border-indigo-500'} text-white shadow-sm`
+                  ? `${formData.category === 'food' ? 'bg-[#1D9E75] border-[#1D9E75]' : 'bg-blue-500 border-blue-500'} text-white shadow-sm`
                   : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
               )}
             >
@@ -625,6 +693,17 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
             placeholder={t('anonymous') || "Anonymous"}
           />
         </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('workingHours')}</label>
+        <input
+          type="text"
+          value={formData.workingHours}
+          onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+          placeholder="e.g. 09:00 - 22:00"
+        />
       </div>
 
       <div className="space-y-1">

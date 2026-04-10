@@ -73,7 +73,15 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         }),
       });
 
-      const result = await response.json();
+      let result;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        result = { message: text || `Server responded with status ${response.status}` };
+      }
+
       setSendResult({
         success: response.ok,
         message: result.message || (response.ok ? 'Notification sent successfully!' : 'Failed to send notification.')
@@ -85,7 +93,10 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       }
     } catch (error) {
       console.error('Error sending notification:', error);
-      setSendResult({ success: false, message: 'An error occurred while sending.' });
+      setSendResult({ 
+        success: false, 
+        message: 'An error occurred while sending. If you are on a static host (like Hostinger Shared Hosting), the backend API might not be running.' 
+      });
     } finally {
       setIsSending(false);
     }

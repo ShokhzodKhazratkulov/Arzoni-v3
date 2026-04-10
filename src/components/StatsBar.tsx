@@ -15,8 +15,8 @@ export default function StatsBar({ restaurants, selectedCategory }: StatsBarProp
     : 0;
 
   return (
-    <div className="bg-[#1D9E75]/5 px-4 py-2 border-b border-[#1D9E75]/10">
-      <div className="max-w-7xl mx-auto flex flex-wrap justify-between gap-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#1D9E75]">
+    <div className={selectedCategory === 'food' ? "bg-[#1D9E75]/5 px-4 py-2 border-b border-[#1D9E75]/10" : "bg-blue-500/5 px-4 py-2 border-b border-blue-500/10"}>
+      <div className={`max-w-7xl mx-auto flex flex-wrap justify-between gap-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider ${selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-blue-500'}`}>
         <div className="flex items-center gap-1.5">
           <span className="opacity-60">
             {selectedCategory === 'food' ? t('totalRestaurants') : t('totalShops')}:

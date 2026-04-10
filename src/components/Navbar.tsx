@@ -1,9 +1,9 @@
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
-import { MapPin, LogIn, LogOut, ShieldCheck, User } from 'lucide-react';
-import { Language } from '../types';
+import { MapPin, LogIn, LogOut, ShieldCheck, ChevronDown, Globe } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import LoginModal from './LoginModal';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
   onAdminClick?: () => void;
@@ -13,10 +13,29 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
   const { t, i18n } = useTranslation();
   const { user, isAdmin, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
 
-  const changeLanguage = (lng: Language) => {
+  const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
+    setIsLangOpen(false);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const languages = [
+    { code: 'uz', label: 'O\'zbekcha' },
+    { code: 'ru', label: 'Русский' },
+    { code: 'en', label: 'English' }
+  ];
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm px-3 sm:px-4 py-2">
@@ -88,33 +107,50 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
             )}
           </div>
 
-          {/* Language Selector */}
-          <div className="flex items-center gap-1 bg-gray-50 p-0.5 rounded-full border border-gray-200">
+          {/* Language Selector Dropdown */}
+          <div className="relative" ref={langRef}>
             <button
-              onClick={() => changeLanguage('uz')}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                i18n.language === 'uz' ? 'bg-white text-[#1D9E75] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={() => setIsLangOpen(!isLangOpen)}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-gray-50 text-gray-600 rounded-xl border border-gray-200 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100 transition-colors"
             >
-              UZ
+              <Globe size={14} />
+              <span>{i18n.language.toUpperCase()}</span>
+              <ChevronDown size={12} className={`transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button
-              onClick={() => changeLanguage('ru')}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                i18n.language === 'ru' ? 'bg-white text-[#1D9E75] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              RU
-            </button>
-            <button
-              onClick={() => changeLanguage('en')}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                i18n.language === 'en' ? 'bg-white text-[#1D9E75] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              EN
-            </button>
+
+            <AnimatePresence>
+              {isLangOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[60]"
+                >
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => changeLanguage(lang.code)}
+                      className={`w-full px-4 py-2 text-left text-[10px] font-bold transition-colors hover:bg-gray-50 ${
+                        i18n.language === lang.code ? 'text-[#1D9E75]' : 'text-gray-600'
+                      }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {/* Mobile Admin Icon */}
+          {isAdmin && (
+            <button 
+              onClick={onAdminClick}
+              className="sm:hidden p-2 text-amber-600 hover:bg-amber-50 rounded-full transition-colors"
+            >
+              <ShieldCheck size={20} />
+            </button>
+          )}
         </div>
       </div>
 

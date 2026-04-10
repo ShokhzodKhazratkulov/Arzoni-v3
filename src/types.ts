@@ -20,6 +20,7 @@ export interface Restaurant {
   description: string;
   submitter?: string;
   location: Location;
+  workingHours?: string;
   createdAt: string;
   photoUrl?: string;
   likes: number;
@@ -48,6 +49,7 @@ export interface Review {
   submitter: string;
   createdAt: string;
   photoUrl?: string;
+  photoUrls?: string[];
   likes: number;
   dislikes: number;
   priceSpent: number;

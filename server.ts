@@ -8,10 +8,21 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Initialize OneSignal Client
-const oneSignalClient = new OneSignal.Client(
-  process.env.VITE_ONESIGNAL_APP_ID || "",
-  process.env.ONESIGNAL_REST_API_KEY || ""
-);
+let oneSignalClient: OneSignal.Client | null = null;
+
+try {
+  const appId = process.env.VITE_ONESIGNAL_APP_ID;
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  
+  if (appId && apiKey) {
+    oneSignalClient = new OneSignal.Client(appId, apiKey);
+    console.log('OneSignal Client initialized successfully');
+  } else {
+    console.warn('OneSignal credentials missing in environment variables. Push notifications will not work.');
+  }
+} catch (error) {
+  console.error('Failed to initialize OneSignal Client:', error);
+}
 
 // Initialize Supabase Admin
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
@@ -38,6 +49,12 @@ async function startServer() {
     }
 
     try {
+      if (!oneSignalClient) {
+        return res.status(500).json({ 
+          message: "OneSignal is not configured on the server. Please add ONESIGNAL_REST_API_KEY to your environment variables." 
+        });
+      }
+
       const notification = {
         contents: {
           en: body,

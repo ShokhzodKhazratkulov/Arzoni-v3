@@ -32,12 +32,12 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
     return 'text-red-600 bg-red-50 border-red-100';
   };
 
-  const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#6366F1';
-  const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-indigo-500';
-  const themeText = selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-indigo-500';
-  const themeBorder = selectedCategory === 'food' ? 'border-[#1D9E75]' : 'border-indigo-500';
-  const themeBorderLight = selectedCategory === 'food' ? 'border-[#1D9E75]/20' : 'border-indigo-500/20';
-  const themeBgLight = selectedCategory === 'food' ? 'bg-[#1D9E75]/10' : 'bg-indigo-500/10';
+  const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#3B82F6';
+  const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
+  const themeText = selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
+  const themeBorder = selectedCategory === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
+  const themeBorderLight = selectedCategory === 'food' ? 'border-[#1D9E75]/20' : 'border-blue-500/20';
+  const themeBgLight = selectedCategory === 'food' ? 'bg-[#1D9E75]/10' : 'bg-blue-500/10';
 
   // Find the most relevant dish to display info for
   const activeDishId = useMemo(() => {
@@ -246,7 +246,7 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
             }}
             className={`flex flex-col items-center gap-0.5 ${themeText} hover:opacity-80 transition-opacity`}
           >
-            <Navigation size={14} className={selectedCategory === 'food' ? "fill-[#1D9E75]/10" : "fill-indigo-500/10"} />
+            <Navigation size={14} className={selectedCategory === 'food' ? "fill-[#1D9E75]/10" : "fill-blue-500/10"} />
             <span className="text-[9px] font-black uppercase leading-none text-center">{t('getDirections')}</span>
           </button>
         </div>
