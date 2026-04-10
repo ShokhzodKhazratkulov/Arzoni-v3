@@ -5,7 +5,7 @@
 ### 1. Authentication & Roles
 - **Provider**: Supabase Auth.
 - **Methods**: Magic Link (Email) is the primary working method. Google OAuth is implemented but requires Client ID/Secret configuration in Supabase Dashboard.
-- **Admin Role**: Hardcoded to `abdullayevamuborak548@gmail.com` in `src/lib/AuthContext.tsx`.
+- **Admin Role**: Hardcoded to `khazratkulovshokhzod@gmail.com` in `src/lib/AuthContext.tsx`.
 - **Admin Access**: When logged in as the admin, a "Shield" icon appears in the Navbar leading to the Admin Center.
 
 ### 2. Admin Center UI (`src/components/AdminDashboard.tsx`)
@@ -19,7 +19,7 @@
     - Image upload with compression.
     - Link banners to specific restaurants.
     - Set expiry dates.
-- **Placeholders**: Tab for "Push Notifications" is created but logic is not yet implemented.
+- **Push Notifications**: Implemented using OneSignal. Admin can send broadcasts from the Admin Center.
 
 ### 3. Monetization Features
 - **Sponsored Listings**: Implemented sorting logic in `App.tsx` that prioritizes `isSponsored: true` restaurants regardless of other filters/sorts.
@@ -35,9 +35,9 @@ The Supabase database now includes:
 
 ## Roadmap & Next Steps for the Next AI Agent
 
-### Phase 2: Push Notifications
-- Integrate Firebase Cloud Messaging (FCM) or a similar service.
-- Build the "Notification Center" in the Admin Center to send blasts to all users.
+### Phase 2: Push Notifications (COMPLETED)
+- Integrated OneSignal for Web Push.
+- Built the "Notification Center" in the Admin Center to send blasts to all users.
 
 ### Phase 3: Business Portal
 - Allow restaurant owners to log in and see their own listing stats.
