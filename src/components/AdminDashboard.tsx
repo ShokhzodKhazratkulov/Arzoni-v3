@@ -18,7 +18,8 @@ import {
   Trash2,
   Calendar,
   Upload,
-  X
+  X,
+  Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../supabase';
@@ -48,6 +49,47 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Notification State
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationBody, setNotificationBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const sendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notificationTitle || !notificationBody) return;
+
+    setIsSending(true);
+    setSendResult(null);
+
+    try {
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: notificationTitle,
+          body: notificationBody
+        }),
+      });
+
+      const result = await response.json();
+      setSendResult({
+        success: response.ok,
+        message: result.message || (response.ok ? 'Notification sent successfully!' : 'Failed to send notification.')
+      });
+
+      if (response.ok) {
+        setNotificationTitle('');
+        setNotificationBody('');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      setSendResult({ success: false, message: 'An error occurred while sending.' });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   useEffect(() => {
     fetchRestaurants();
@@ -728,18 +770,82 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 
             {activeTab === 'notifications' && (
               <motion.div 
-                key="coming-soon"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-3xl shadow-sm border border-gray-100 p-12 text-center space-y-4"
+                key="notifications"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
               >
-                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mx-auto">
-                  <AlertCircle size={32} />
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
+                      <Bell size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-gray-900">Push Notification Center</h2>
+                      <p className="text-xs text-gray-500">Send a broadcast message to all users who have enabled notifications.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={sendNotification} className="space-y-6 max-w-2xl">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Notification Title</label>
+                      <input 
+                        type="text" 
+                        value={notificationTitle}
+                        onChange={(e) => setNotificationTitle(e.target.value)}
+                        placeholder="e.g., New Restaurant Added!"
+                        className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500/20 transition-all"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Message Body</label>
+                      <textarea 
+                        value={notificationBody}
+                        onChange={(e) => setNotificationBody(e.target.value)}
+                        placeholder="e.g., Check out the new Milliy Taomlar in Shaykhantakhur district..."
+                        rows={4}
+                        className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500/20 transition-all resize-none"
+                        required
+                      />
+                    </div>
+
+                    {sendResult && (
+                      <div className={`p-4 rounded-2xl text-sm font-bold flex items-center gap-3 ${sendResult.success ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        {sendResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                        {sendResult.message}
+                      </div>
+                    )}
+
+                    <button 
+                      type="submit"
+                      disabled={isSending}
+                      className="w-full bg-amber-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-amber-500/20 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      {isSending ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Send size={18} />
+                          Send Broadcast
+                        </>
+                      )}
+                    </button>
+                  </form>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Module Coming Soon</h3>
-                <p className="text-gray-500 max-w-md mx-auto text-sm">
-                  We are building the Push Notification Center. This will be available in the next update.
-                </p>
+
+                <div className="bg-amber-50 rounded-3xl p-6 border border-amber-100">
+                  <h4 className="text-sm font-black text-amber-900 mb-2 flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    Important Note
+                  </h4>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    Notifications are sent to all users who have granted permission in their browser. 
+                    This action cannot be undone. Please double-check your message before sending.
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

@@ -17,6 +17,7 @@ import { AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RestaurantDetailsModal from './components/RestaurantDetailsModal';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { NotificationHandler } from './components/NotificationHandler';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -645,6 +646,7 @@ function AppContent() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <NotificationHandler />
         <Navbar onAdminClick={() => setShowAdmin(true)} />
         
         <main className="flex-1 flex flex-col">
