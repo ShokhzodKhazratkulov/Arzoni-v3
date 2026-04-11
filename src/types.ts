@@ -59,6 +59,9 @@ export interface Review {
 export interface Banner {
   id: string;
   image_url: string;
+  image_url_uz?: string;
+  image_url_ru?: string;
+  image_url_en?: string;
   restaurant_id: string;
   expiry_date: string;
   created_at: string;

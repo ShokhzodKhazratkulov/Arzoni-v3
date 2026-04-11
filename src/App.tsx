@@ -110,7 +110,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isAdmin } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -644,6 +644,14 @@ function AppContent() {
     }
   };
 
+  const getBannerImage = (banner: Banner) => {
+    const lang = i18n.language;
+    if (lang === 'uz' && banner.image_url_uz) return banner.image_url_uz;
+    if (lang === 'ru' && banner.image_url_ru) return banner.image_url_ru;
+    if (lang === 'en' && banner.image_url_en) return banner.image_url_en;
+    return banner.image_url;
+  };
+
   if (showAdmin && isAdmin) {
     return <AdminDashboard onBack={() => setShowAdmin(false)} />;
   }
@@ -687,7 +695,7 @@ function AppContent() {
                         className="absolute inset-0 group touch-pan-y"
                       >
                         <img 
-                          src={filteredBanners[activeBannerIndex].image_url} 
+                          src={getBannerImage(filteredBanners[activeBannerIndex])} 
                           alt={filteredBanners[activeBannerIndex].restaurant_name || "Ad Banner"} 
                           className="w-full h-full object-cover" 
                         />
@@ -737,7 +745,7 @@ function AppContent() {
                       className="relative h-[130px] rounded-2xl overflow-hidden shadow-lg shadow-gray-200/50 group border border-gray-100"
                     >
                       <img 
-                        src={banner.image_url} 
+                        src={getBannerImage(banner)} 
                         alt={banner.restaurant_name || "Ad Banner"} 
                         className="w-full h-full object-cover" 
                       />

@@ -43,8 +43,9 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   
   // Banner Form State
   const [isAddingBanner, setIsAddingBanner] = useState(false);
-  const [bannerImage, setBannerImage] = useState<File | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string>('');
+  const [bannerImages, setBannerImages] = useState<{ [key: string]: File }>({});
+  const [bannerPreviews, setBannerPreviews] = useState<{ [key: string]: string }>({});
+  const [activeBannerLang, setActiveBannerLang] = useState<'uz' | 'ru' | 'en'>('uz');
   const [bannerCategory, setBannerCategory] = useState<'food' | 'clothes'>('food');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -166,8 +167,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
           useWebWorker: true
         };
         const compressedFile = await imageCompression(file, options);
-        setBannerImage(compressedFile);
-        setBannerPreview(URL.createObjectURL(compressedFile));
+        setBannerImages(prev => ({ ...prev, [activeBannerLang]: compressedFile }));
+        setBannerPreviews(prev => ({ ...prev, [activeBannerLang]: URL.createObjectURL(compressedFile) }));
       } catch (error) {
         console.error('Error compressing image:', error);
       }
@@ -175,30 +176,42 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   };
 
   const addBanner = async () => {
-    if (!bannerImage || !selectedRestaurantId || !expiryDate) return;
+    if (Object.keys(bannerImages).length === 0 || !selectedRestaurantId || !expiryDate) return;
 
     setIsUploading(true);
     try {
-      // 1. Upload Image
-      const fileExt = bannerImage.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `banners/${fileName}`;
+      const urls: { [key: string]: string } = {};
 
-      const { error: uploadError } = await supabase.storage
-        .from('restaurant-photos')
-        .upload(filePath, bannerImage);
+      // Upload all images
+      for (const lang of ['uz', 'ru', 'en']) {
+        const image = bannerImages[lang];
+        if (image) {
+          const fileExt = image.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const filePath = `banners/${fileName}`;
 
-      if (uploadError) throw uploadError;
+          const { error: uploadError } = await supabase.storage
+            .from('restaurant-photos')
+            .upload(filePath, image);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('restaurant-photos')
-        .getPublicUrl(filePath);
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('restaurant-photos')
+            .getPublicUrl(filePath);
+          
+          urls[`image_url_${lang}`] = publicUrl;
+        }
+      }
 
       // 2. Create Banner Record
       const { error: dbError } = await supabase
         .from('banners')
         .insert({
-          image_url: publicUrl,
+          image_url: urls.image_url_uz || urls.image_url_ru || urls.image_url_en || '',
+          image_url_uz: urls.image_url_uz || null,
+          image_url_ru: urls.image_url_ru || null,
+          image_url_en: urls.image_url_en || null,
           restaurant_id: selectedRestaurantId,
           expiry_date: expiryDate,
           category: bannerCategory
@@ -208,8 +221,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 
       // Reset form and refresh
       setIsAddingBanner(false);
-      setBannerImage(null);
-      setBannerPreview('');
+      setBannerImages({});
+      setBannerPreviews({});
       setSelectedRestaurantId('');
       setExpiryDate('');
       fetchBanners();
@@ -625,6 +638,11 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                         <div className="p-4 flex justify-between items-center">
                           <div>
                             <p className="text-sm font-bold text-gray-900">{banner.restaurant_name || 'Unknown Restaurant'}</p>
+                            <div className="flex gap-1 mt-1 mb-1">
+                              {banner.image_url_uz && <span className="px-1.5 py-0.5 bg-green-50 text-[8px] font-black rounded text-green-600">UZ</span>}
+                              {banner.image_url_ru && <span className="px-1.5 py-0.5 bg-blue-50 text-[8px] font-black rounded text-blue-600">RU</span>}
+                              {banner.image_url_en && <span className="px-1.5 py-0.5 bg-amber-50 text-[8px] font-black rounded text-amber-600">EN</span>}
+                            </div>
                             <p className="text-[10px] text-gray-400 flex items-center gap-1">
                               <Calendar size={10} />
                               Expires: {new Date(banner.expiry_date).toLocaleDateString()}
@@ -658,27 +676,44 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                       >
                         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
                           <h3 className="text-xl font-black text-gray-900">Add New Banner</h3>
-                          <button onClick={() => setIsAddingBanner(false)} className="p-2 hover:bg-gray-50 rounded-xl text-gray-400">
-                            <X size={20} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                              {(['en', 'uz', 'ru'] as const).map((lang) => (
+                                <button
+                                  key={lang}
+                                  onClick={() => setActiveBannerLang(lang)}
+                                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    activeBannerLang === lang ? 'bg-white text-[#1D9E75] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                                  }`}
+                                >
+                                  {lang}
+                                </button>
+                              ))}
+                            </div>
+                            <button onClick={() => setIsAddingBanner(false)} className="p-2 hover:bg-gray-50 rounded-xl text-gray-400">
+                              <X size={20} />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="p-6 space-y-6 overflow-y-auto">
                           {/* Image Upload */}
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Banner Image (21:9 recommended)</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              Banner Image ({activeBannerLang.toUpperCase()})
+                            </label>
                             <div 
                               onClick={() => document.getElementById('banner-upload')?.click()}
                               className={`aspect-[21/9] rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-2 overflow-hidden relative ${
-                                bannerPreview ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300 hover:bg-gray-50'
+                                bannerPreviews[activeBannerLang] ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300 hover:bg-gray-50'
                               }`}
                             >
-                              {bannerPreview ? (
-                                <img src={bannerPreview} alt="Preview" className="w-full h-full object-cover" />
+                              {bannerPreviews[activeBannerLang] ? (
+                                <img src={bannerPreviews[activeBannerLang]} alt="Preview" className="w-full h-full object-cover" />
                               ) : (
                                 <>
                                   <Upload className="text-gray-300" size={32} />
-                                  <p className="text-xs text-gray-400 font-bold">Click to upload image</p>
+                                  <p className="text-xs text-gray-400 font-bold">Click to upload {activeBannerLang.toUpperCase()} image</p>
                                 </>
                               )}
                               <input 
@@ -755,9 +790,9 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                         <div className="p-6 bg-gray-50/50 border-t border-gray-50">
                           <button 
                             onClick={addBanner}
-                            disabled={isUploading || !bannerImage || !selectedRestaurantId || !expiryDate}
+                            disabled={isUploading || Object.keys(bannerImages).length === 0 || !selectedRestaurantId || !expiryDate}
                             className={`w-full py-4 rounded-2xl font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${
-                              isUploading || !bannerImage || !selectedRestaurantId || !expiryDate
+                              isUploading || Object.keys(bannerImages).length === 0 || !selectedRestaurantId || !expiryDate
                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 : 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600'
                             }`}
