@@ -129,7 +129,12 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         sponsoredExpiry: r.sponsored_expiry,
         verifiedExpiry: r.verified_expiry
       }));
-      setRestaurants(mappedData as Restaurant[]);
+
+      // Deduplicate by ID
+      const uniqueRestaurants = Array.from(
+        new Map(mappedData.map(r => [r.id, r])).values()
+      );
+      setRestaurants(uniqueRestaurants as Restaurant[]);
     }
     setLoading(false);
   };
@@ -153,7 +158,12 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         restaurant_name: b.restaurants?.name,
         category: b.category
       }));
-      setBanners(mappedBanners as Banner[]);
+
+      // Deduplicate by ID
+      const uniqueBanners = Array.from(
+        new Map(mappedBanners.map(b => [b.id, b])).values()
+      );
+      setBanners(uniqueBanners as Banner[]);
     }
   };
 

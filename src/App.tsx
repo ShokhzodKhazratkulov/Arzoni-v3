@@ -164,7 +164,11 @@ function AppContent() {
           sponsoredExpiry: r.sponsored_expiry,
           verifiedExpiry: r.verified_expiry
         }));
-        setRestaurants(mappedData as Restaurant[]);
+        // Deduplicate by ID
+        const uniqueRestaurants = Array.from(
+          new Map(mappedData.map(r => [r.id, r])).values()
+        );
+        setRestaurants(uniqueRestaurants as Restaurant[]);
       }
       setLoading(false);
     };
@@ -186,7 +190,11 @@ function AppContent() {
           restaurant_name: b.restaurants?.name,
           category: b.restaurants?.category
         }));
-        setBanners(mappedBanners as Banner[]);
+        // Deduplicate by ID
+        const uniqueBanners = Array.from(
+          new Map(mappedBanners.map(b => [b.id, b])).values()
+        );
+        setBanners(uniqueBanners as Banner[]);
       }
     };
 
@@ -211,12 +219,21 @@ function AppContent() {
   }, [selectedCategory]);
 
   const filteredRestaurants = useMemo(() => {
-    // First, filter out duplicates by name and address just in case
-    const uniqueMap = new Map<string, Restaurant>();
+    // First, filter out duplicates by ID to prevent React key errors
+    const idMap = new Map<string, Restaurant>();
     restaurants.forEach(r => {
-      const id = `${r.name}|${r.address}`.toLowerCase().trim();
-      if (!uniqueMap.has(id)) {
-        uniqueMap.set(id, r);
+      if (r.id && !idMap.has(r.id)) {
+        idMap.set(r.id, r);
+      }
+    });
+    const uniqueById = Array.from(idMap.values());
+
+    // Then, filter out duplicates by name and address just in case
+    const uniqueMap = new Map<string, Restaurant>();
+    uniqueById.forEach(r => {
+      const compositeId = `${r.name}|${r.address}`.toLowerCase().trim();
+      if (!uniqueMap.has(compositeId)) {
+        uniqueMap.set(compositeId, r);
       }
     });
     const uniqueRestaurants = Array.from(uniqueMap.values());
