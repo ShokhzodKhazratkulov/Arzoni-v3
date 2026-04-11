@@ -451,7 +451,7 @@ function AppContent() {
         created_at: new Date().toISOString()
       };
       
-      const { error } = await supabase
+      const { error: error } = await supabase
         .from('restaurants')
         .insert([restaurantData]);
 
@@ -460,6 +460,7 @@ function AppContent() {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error adding restaurant:', error);
+      throw error; // Re-throw to be caught by the modal
     } finally {
       setLoading(false);
     }
@@ -467,10 +468,10 @@ function AppContent() {
 
   const recalculateRestaurantMetrics = async (restaurantId: string) => {
     try {
-      // Fetch the restaurant to get its initial price and category
+      // Fetch the restaurant to get its initial price, category and current dishes
       const { data: restaurant, error: restFetchError } = await supabase
         .from('restaurants')
-        .select('price, category')
+        .select('price, category, dishes')
         .eq('id', restaurantId)
         .single();
 
@@ -495,7 +496,7 @@ function AppContent() {
       const totalRating = reviews.reduce((acc, curr) => acc + curr.rating, 0);
       const avgRating = totalRating / reviewCount;
       
-      const totalPrice = reviews.reduce((acc, curr) => acc + curr.priceSpent, 0) + restaurant.price;
+      const totalPrice = reviews.reduce((acc, curr) => acc + curr.priceSpent, 0) + (restaurant.price || 0);
       const avgPrice = Math.round(totalPrice / (reviewCount + 1));
 
       const dishCounts: { [dishId: string]: number } = {};
@@ -550,6 +551,9 @@ function AppContent() {
         }
       });
 
+      // Merge existing dishes with new ones from reviews
+      const updatedDishes = Array.from(new Set([...(restaurant.dishes || []), ...(Object.keys(dishCounts))]));
+
       await supabase
         .from('restaurants')
         .update({
@@ -560,11 +564,12 @@ function AppContent() {
           total_reviews: reviewCount,
           dish_score: dishScore,
           dish_stats: dishStats,
-          dishes: Array.from(new Set([...(Object.keys(dishCounts))]))
+          dishes: updatedDishes
         })
         .eq('id', restaurantId);
     } catch (error) {
       console.error('Error recalculating metrics:', error);
+      throw error;
     }
   };
 
@@ -591,6 +596,7 @@ function AppContent() {
           submitter: restReviewData.submitter,
           price_spent: restReviewData.priceSpent,
           dish_id: restReviewData.dishId,
+          photo_url: photoUrls[0] || null,
           photo_urls: photoUrls,
           created_at: new Date().toISOString(),
           likes: 0,
@@ -607,6 +613,7 @@ function AppContent() {
       setInitialRestaurantForModal(null);
     } catch (error) {
       console.error('Error adding review:', error);
+      throw error; // Re-throw to be caught by the modal
     } finally {
       setLoading(false);
     }

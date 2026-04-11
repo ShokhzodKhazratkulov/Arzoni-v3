@@ -79,6 +79,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
   const [reviewPhotoFiles, setReviewPhotoFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mapRef = useRef<google.maps.Map | null>(null);
 
@@ -240,38 +241,51 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
+    setIsSubmitting(true);
     
-    if (mode === 'review' && selectedRestaurant?.id) {
-      const finalDishId = reviewData.dishId === 'other' ? reviewData.customDishName : reviewData.dishId;
-      
-      onAddReview(selectedRestaurant.id, {
-        ...reviewData,
-        submitter: reviewData.submitter.trim() || 'Anonymous',
-        dishId: finalDishId,
-        restaurantId: selectedRestaurant.id,
-        photoFiles: reviewPhotoFiles,
-        createdAt: new Date().toISOString(),
-        likes: 0,
-        dislikes: 0
-      });
-    } else {
-      onSubmit({
-        ...formData,
-        submitter: formData.submitter.trim() || 'Anonymous',
-        category: selectedCategory,
-        name: formData.name || searchTerm,
-        rating: 0,
-        reviewCount: 0,
-        likes: 0,
-        dislikes: 0,
-        photoFile: photoFile, // Pass the file object
-        createdAt: new Date().toISOString()
-      });
+    try {
+      if (mode === 'review' && selectedRestaurant?.id) {
+        const finalDishId = reviewData.dishId === 'other' ? reviewData.customDishName : reviewData.dishId;
+        
+        if (!finalDishId) {
+          setLocalError(t('selectDishError') || "Please select a dish or enter a custom one.");
+          return;
+        }
+
+        await onAddReview(selectedRestaurant.id, {
+          ...reviewData,
+          submitter: reviewData.submitter.trim() || 'Anonymous',
+          dishId: finalDishId,
+          restaurantId: selectedRestaurant.id,
+          photoFiles: reviewPhotoFiles,
+          createdAt: new Date().toISOString(),
+          likes: 0,
+          dislikes: 0
+        });
+      } else {
+        await onSubmit({
+          ...formData,
+          submitter: formData.submitter.trim() || 'Anonymous',
+          category: selectedCategory,
+          name: formData.name || searchTerm,
+          rating: 0,
+          reviewCount: 0,
+          likes: 0,
+          dislikes: 0,
+          photoFile: photoFile, // Pass the file object
+          createdAt: new Date().toISOString()
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error('Submit error:', error);
+      setLocalError(error instanceof Error ? error.message : 'An error occurred during submission');
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    onClose();
   };
 
   const renderSearch = () => (
@@ -764,9 +778,17 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
                   </button>
                   <button
                     type="submit"
-                    className={`flex-1 px-6 py-3 ${themeBg} text-white rounded-xl font-bold ${themeHover} transition-all shadow-lg`}
+                    disabled={isSubmitting}
+                    className={`flex-1 px-6 py-3 ${themeBg} text-white rounded-xl font-bold ${themeHover} transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {t('submit')}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        {t('saving') || "Saving..."}
+                      </>
+                    ) : (
+                      t('submit')
+                    )}
                   </button>
                 </div>
               )}
