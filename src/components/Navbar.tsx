@@ -57,18 +57,18 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
               </h1>
             </div>
             {/* Tagline */}
-            <div className="flex items-center gap-1 text-[11px] text-gray-500 font-medium mt-0.5">
-              <span className="whitespace-nowrap">{t('taglinePart1')}</span>
+            <div className="flex items-center gap-1 text-[11px] text-gray-500 font-medium mt-0.5 whitespace-nowrap">
+              <span>{t('taglinePart1')}</span>
               <span className="font-bold text-gray-700">
                 {t('foodItem')}/{t('clothesItem')}
               </span>
-              <span className="whitespace-nowrap">{t('taglinePart2')}</span>
+              <span>{t('taglinePart2')}</span>
             </div>
           </div>
         </div>
 
         {/* Right side: Admin, Auth, and Language */}
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0 mt-[-23px] pl-[1px]">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 mt-[-23px] mr-4">
           {/* Admin Dashboard Link (Visible only to Admin) */}
           {isAdmin && (
             <button 

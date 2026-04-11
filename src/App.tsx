@@ -878,7 +878,7 @@ function AppContent() {
               <div className="w-1 h-4 bg-[#CE1126]" title="Red"></div>
               <div className="w-8 h-4 bg-[#0099B5]" title="Blue"></div>
             </div>
-            <p className="text-gray-400 text-xs font-medium">
+            <p className="text-gray-400 text-xs font-medium whitespace-nowrap">
               &copy; {new Date().getFullYear()} Arzoni — {t('taglinePart1')} {t('foodItem')}/{t('clothesItem')} {t('taglinePart2')}
             </p>
           </div>
