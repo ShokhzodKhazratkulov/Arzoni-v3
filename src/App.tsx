@@ -125,7 +125,7 @@ function AppContent() {
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('all');
   const [customPrice, setCustomPrice] = useState<number>(0);
   const [customDish, setCustomDish] = useState<string>('');
-  const [sortOption, setSortOption] = useState<SortOption>('price');
+  const [sortOption, setSortOption] = useState<SortOption>('price_asc');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialRestaurantForModal, setInitialRestaurantForModal] = useState<Restaurant | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -350,7 +350,8 @@ function AppContent() {
         }
       }
 
-      if (sortOption === 'price') return getEffectivePrice(a) - getEffectivePrice(b);
+      if (sortOption === 'price_asc') return getEffectivePrice(a) - getEffectivePrice(b);
+      if (sortOption === 'price_desc') return getEffectivePrice(b) - getEffectivePrice(a);
       if (sortOption === 'rating') return b.rating - a.rating;
       return 0;
     });
@@ -504,7 +505,7 @@ function AppContent() {
       const currentTypes = restaurant.category === 'food' ? DISH_TYPES : CLOTHING_TYPES;
 
       reviews.forEach(review => {
-        if (review.dishId) {
+        if (review.dishId && review.priceSpent > 0) {
           const isPredefined = currentTypes.some(d => d.id === review.dishId);
           const normalizedId = isPredefined ? review.dishId : review.dishId.toLowerCase();
           
@@ -522,9 +523,11 @@ function AppContent() {
       const dishStats: { [dishId: string]: { avgPrice: number; reviewCount: number; bestComment?: string; displayName?: string } } = {};
       
       Object.keys(dishCounts).forEach(dishId => {
-        dishScore[dishId] = dishCounts[dishId] / reviewCount;
+        dishScore[dishId] = reviewCount > 0 ? dishCounts[dishId] / reviewCount : 0;
         const prices = dishGroupedPrices[dishId];
-        const avgDishPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+        const avgDishPrice = prices.length > 0 
+          ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
+          : 0;
         
         const isPredefined = currentTypes.some(d => d.id === dishId);
         const dishReviews = reviews.filter(r => {
@@ -537,12 +540,14 @@ function AppContent() {
           ? reviewsWithComments.reduce((prev, curr) => (curr.likes || 0) > (prev.likes || 0) ? curr : prev, reviewsWithComments[0])
           : null;
         
-        dishStats[dishId] = {
-          avgPrice: avgDishPrice,
-          reviewCount: dishCounts[dishId],
-          bestComment: bestReview?.comment,
-          displayName: dishDisplayNames[dishId] // Will be undefined for predefined
-        };
+        if (avgDishPrice > 0) {
+          dishStats[dishId] = {
+            avgPrice: avgDishPrice,
+            reviewCount: dishCounts[dishId],
+            bestComment: bestReview?.comment,
+            displayName: dishDisplayNames[dishId] // Will be undefined for predefined
+          };
+        }
       });
 
       await supabase

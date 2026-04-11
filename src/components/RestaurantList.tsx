@@ -41,7 +41,8 @@ export default function RestaurantList({
             onChange={(e) => setSortOption(e.target.value as SortOption)}
             className="bg-transparent text-xs font-bold text-gray-600 focus:outline-none cursor-pointer"
           >
-            <option value="price">{t('price')}</option>
+            <option value="price_asc">{t('price_asc')}</option>
+            <option value="price_desc">{t('price_desc')}</option>
             <option value="rating">{t('rating')}</option>
             <option value="distance">{t('distance')}</option>
           </select>

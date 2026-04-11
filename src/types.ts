@@ -69,4 +69,4 @@ export interface Banner {
   category?: 'food' | 'clothes';
 }
 
-export type SortOption = 'price' | 'rating' | 'distance';
+export type SortOption = 'price_asc' | 'price_desc' | 'rating' | 'distance';

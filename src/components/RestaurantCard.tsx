@@ -171,8 +171,15 @@ export default function RestaurantCard({ restaurant, onAddReview, selectedDishes
               <span className="line-clamp-1">{restaurant.address}</span>
             </div>
           </div>
-          <div className={`px-3 py-1.5 rounded-xl border text-sm font-black whitespace-nowrap shadow-sm transition-all group-hover:scale-105 ${getPriceColor(displayPrice)}`}>
-            {Math.round(displayPrice).toLocaleString()} {t('som')}
+          <div className={`flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl border shadow-sm transition-all group-hover:scale-105 ${getPriceColor(displayPrice)}`}>
+            <span className="text-sm font-black whitespace-nowrap">
+              {Math.round(displayPrice).toLocaleString()} {t('som')}
+            </span>
+            {isReview && (
+              <span className="text-[7px] font-black uppercase tracking-tighter opacity-70 leading-none">
+                {t('review')}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
