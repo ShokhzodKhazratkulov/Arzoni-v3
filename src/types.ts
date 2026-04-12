@@ -72,6 +72,9 @@ export interface Banner {
   created_at: string;
   restaurant_name?: string; // For display in admin
   category?: 'food' | 'clothes';
+  is_paused?: boolean;
+  position: number;
+  start_date?: string;
 }
 
 export type DishStats = {
