@@ -55,7 +55,7 @@ export default function FilterBar({
           )}
         >
           <Utensils size={18} />
-          {t('categoryFood')}
+          {t('foodCategory')}
         </button>
         <button
           onClick={() => setSelectedCategory('clothes')}
@@ -67,7 +67,7 @@ export default function FilterBar({
           )}
         >
           <Shirt size={18} />
-          {t('categoryClothes')}
+          {t('clothesCategory')}
         </button>
       </div>
 
@@ -103,7 +103,7 @@ export default function FilterBar({
                 : "bg-white text-gray-600 border-gray-200 hover:border-[#1D9E75] hover:text-[#1D9E75]"
             )}
           >
-            {selectedCategory === 'food' ? t('customDish') : t('otherDishClothes')}
+            {t('otherDish')}
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function FilterBar({
               type="text"
               value={customDish}
               onChange={(e) => setCustomDish(e.target.value)}
-              placeholder={selectedCategory === 'food' ? t('customDishPlaceholder') : t('customDishPlaceholderClothes')}
+              placeholder={t('customDishPlaceholder')}
               className="w-full sm:w-64 px-4 py-2 text-base border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
             />
           </div>

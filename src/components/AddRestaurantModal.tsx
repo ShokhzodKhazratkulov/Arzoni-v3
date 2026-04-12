@@ -280,9 +280,10 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
         });
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submit error:', error);
-      setLocalError(error instanceof Error ? error.message : 'An error occurred during submission');
+      const message = error.message || error.details || (error.error_description) || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      setLocalError(message);
     } finally {
       setIsSubmitting(false);
     }

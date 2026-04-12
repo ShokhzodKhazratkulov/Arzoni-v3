@@ -1,279 +1,120 @@
-import { useState, useMemo } from 'react';
+import { Star, MapPin, Navigation, MessageSquare } from 'lucide-react';
+import { DishStats } from '../types';
 import { useTranslation } from 'react-i18next';
-import { Star, MapPin, Navigation, Info, CheckCircle2 } from 'lucide-react';
-import { Restaurant } from '../types';
-import { DISH_TYPES, CLOTHING_TYPES } from '../constants';
-import { motion } from 'motion/react';
-import RestaurantDetailsModal from './RestaurantDetailsModal';
-import DirectionsPicker from './DirectionsPicker';
 
-interface RestaurantCardProps {
-  restaurant: Restaurant;
-  onAddReview?: () => void;
-  key?: string;
-  selectedDishes?: string[];
-  customDish?: string;
-  selectedCategory: 'food' | 'clothes';
-}
+type RestaurantCardProps = {
+  restaurantId: string;
+  name: string;
+  area: string;          // "Iftikhor street, Tashkent"
+  selectedDish: string;  // "Osh"
+  dishStatsForSelected: DishStats | null;
+  allDishStats: DishStats[];
+  distanceKm?: number;
+  durationMin?: number;
+  onViewReviews?: (id: string) => void;
+  onGetDirections?: (id: string) => void;
+};
 
-export default function RestaurantCard({ restaurant, onAddReview, selectedDishes = [], customDish, selectedCategory }: RestaurantCardProps) {
+export default function RestaurantCard({
+  restaurantId,
+  name,
+  area,
+  selectedDish,
+  dishStatsForSelected,
+  allDishStats,
+  distanceKm,
+  durationMin,
+  onViewReviews,
+  onGetDirections,
+}: RestaurantCardProps) {
   const { t } = useTranslation();
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isDirectionsOpen, setIsDirectionsOpen] = useState(false);
-
-  const getPriceColor = (price: number) => {
-    if (selectedCategory === 'clothes') {
-      if (price < 100000) return 'text-green-600 bg-green-50 border-green-100';
-      if (price <= 170000) return 'text-amber-600 bg-amber-50 border-amber-100';
-      return 'text-red-600 bg-red-50 border-red-100';
-    }
-    if (price < 40000) return 'text-green-600 bg-green-50 border-green-100';
-    if (price <= 70000) return 'text-amber-600 bg-amber-50 border-amber-100';
-    return 'text-red-600 bg-red-50 border-red-100';
-  };
-
-  const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#3B82F6';
-  const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
-  const themeText = selectedCategory === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
-  const themeBorder = selectedCategory === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
-  const themeBorderLight = selectedCategory === 'food' ? 'border-[#1D9E75]/20' : 'border-blue-500/20';
-  const themeBgLight = selectedCategory === 'food' ? 'bg-[#1D9E75]/10' : 'bg-blue-500/10';
-
-  // Find the most relevant dish to display info for
-  const activeDishId = useMemo(() => {
-    if (selectedDishes.length === 0) return null;
-    
-    // If 'custom' is selected, the customDish string is the target ID for stats
-    if (selectedDishes.includes('custom') && customDish) {
-      const normalizedSearch = customDish.toLowerCase();
-      // Find a key in dishStats that matches (case-insensitive)
-      const matchingKey = Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedSearch);
-      return matchingKey || customDish;
-    }
-    
-    // Otherwise find the first selected dish that has a comment
-    const foundId = selectedDishes.find(id => {
-      const normalizedId = id.toLowerCase();
-      const matchingKey = Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedId);
-      return matchingKey && restaurant.dishStats[matchingKey]?.bestComment;
-    });
-
-    if (foundId) {
-      const normalizedId = foundId.toLowerCase();
-      return Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedId) || foundId;
-    }
-
-    const firstId = selectedDishes[0];
-    const normalizedFirstId = firstId.toLowerCase();
-    return Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedFirstId) || firstId;
-  }, [selectedDishes, customDish, restaurant.dishStats]);
-
-  const displayPrice = activeDishId && restaurant.dishStats?.[activeDishId] 
-    ? restaurant.dishStats[activeDishId].avgPrice 
-    : (restaurant.avgPrice || restaurant.price);
-
-  const displayDescription = activeDishId && restaurant.dishStats?.[activeDishId]?.bestComment
-    ? `"${restaurant.dishStats[activeDishId].bestComment}"`
-    : restaurant.description;
-
-  const isReview = !!(activeDishId && restaurant.dishStats?.[activeDishId]?.bestComment);
-
-  const isSponsoredValid = useMemo(() => {
-    if (!restaurant.isSponsored) return false;
-    if (!restaurant.sponsoredExpiry) return true;
-    return new Date(restaurant.sponsoredExpiry) > new Date();
-  }, [restaurant.isSponsored, restaurant.sponsoredExpiry]);
-
-  const isVerifiedValid = useMemo(() => {
-    if (!restaurant.isVerified) return false;
-    if (!restaurant.verifiedExpiry) return true;
-    return new Date(restaurant.verifiedExpiry) > new Date();
-  }, [restaurant.isVerified, restaurant.verifiedExpiry]);
-
-  // Calculate popularity: if a dish is active, use its stats. 
-  // Otherwise, use the most popular dish's stats for this restaurant.
-  const popularityPercent = useMemo(() => {
-    if (restaurant.reviewCount === 0 || !restaurant.dishStats) return null;
-    
-    let targetDishId = activeDishId;
-    if (!targetDishId) {
-      // Find most popular dish by review count
-      let maxReviews = -1;
-      Object.entries(restaurant.dishStats).forEach(([id, stats]) => {
-        if (stats.reviewCount > maxReviews) {
-          maxReviews = stats.reviewCount;
-          targetDishId = id;
-        }
-      });
-    }
-
-    if (targetDishId && restaurant.dishStats[targetDishId]) {
-      return Math.round((restaurant.dishStats[targetDishId].reviewCount / restaurant.reviewCount) * 100);
-    }
-    return null;
-  }, [activeDishId, restaurant.dishStats, restaurant.reviewCount]);
+  const popularityPercent = dishStatsForSelected ? Math.round(dishStatsForSelected.popularity * 100) : 0;
 
   return (
-    <>
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-5 flex flex-col gap-4 group relative"
-      >
-        <div 
-          className="w-full h-40 rounded-xl overflow-hidden mb-1 relative bg-gray-100 cursor-pointer"
-          onClick={() => setIsDetailsOpen(true)}
-        >
-          {restaurant.photoUrl ? (
-            <img 
-              src={restaurant.photoUrl} 
-              alt={restaurant.name} 
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-              referrerPolicy="no-referrer" 
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300">
-              <Star size={32} />
-            </div>
-          )}
-          
-          {/* Overlay Info Icon */}
-          <div 
-            className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none"
-          >
-            <div className="bg-white/20 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-              <Info size={20} className="text-white drop-shadow-md" />
-            </div>
-          </div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex flex-col">
+        <h3 className="text-xl font-black text-gray-900 leading-tight">{name}</h3>
+        <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1">
+          <MapPin size={12} className="text-[#1D9E75]" />
+          <span className="line-clamp-1">{area}</span>
         </div>
+      </div>
 
-        <div className="flex justify-between items-start gap-3">
-          <div className="flex-1">
-            <h3 
-              id="restaurant-name"
-              onClick={() => setIsDetailsOpen(true)}
-              className={`font-black text-gray-900 text-xl leading-tight cursor-pointer hover:${themeText} transition-colors inline-block tracking-tight`}
-            >
-              {restaurant.name}
-              {isVerifiedValid && (
-                <CheckCircle2 size={16} className="inline-block ml-1.5 text-blue-500" />
-              )}
-            </h3>
-            {isSponsoredValid && (
-              <div className="mt-1">
-                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-md">
-                  {t('sponsored')}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-1.5 font-medium">
-              <MapPin size={12} className={themeText} />
-              <span className="line-clamp-1">{restaurant.address}</span>
-            </div>
-          </div>
-          <div className={`flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl border shadow-sm transition-all group-hover:scale-105 ${getPriceColor(displayPrice)}`}>
-            <span className="text-sm font-black whitespace-nowrap">
-              {Math.round(displayPrice).toLocaleString()} {t('som')}
-            </span>
-            {isReview && (
-              <span className="text-[7px] font-black uppercase tracking-tighter opacity-70 leading-none">
-                {t('review')}
-              </span>
-            )}
-          </div>
+      {/* Main Stats Line */}
+      <div className="flex justify-between items-center py-2 border-y border-gray-50">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            {t('formPrice')} ({t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))})
+          </span>
+          <span className="text-lg font-black text-[#1D9E75]">
+            {dishStatsForSelected?.avgPrice.toLocaleString() || '0'} {t('som')}
+          </span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {restaurant.dishes.map((dishId, idx) => {
-            const currentTypes = selectedCategory === 'food' ? DISH_TYPES : CLOTHING_TYPES;
-            const dish = currentTypes.find(d => d.id === dishId);
-            // Highlight if exact match with dishId OR if it's a custom dish and matches activeDishId (case-insensitive)
-            const isSelected = selectedDishes.includes(dishId) || 
-              (selectedDishes.includes('custom') && customDish && dishId.toLowerCase() === customDish.toLowerCase());
-            
-            return (
-              <span 
-                key={`${dishId}-${idx}`} 
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
-                  isSelected 
-                    ? `${themeBg} text-white` 
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {dish ? t(dish.label) : (restaurant.dishStats?.[dishId]?.displayName || dishId)}
-              </span>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col items-end">
           <div className="flex items-center gap-1">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              {isReview ? t('mostLikedReview') : t('about')}
+            <Star size={16} className="text-yellow-400 fill-yellow-400" />
+            <span className="text-lg font-black text-gray-900">
+              {dishStatsForSelected?.avgRating || '0.0'}
             </span>
           </div>
-          <p className={`text-gray-600 text-xs line-clamp-2 leading-relaxed italic ${isReview ? `${themeText} border-l-2 ${themeBorderLight} pl-2` : ''}`}>
-            {displayDescription}
-          </p>
+          <span className="text-[10px] font-bold text-gray-400">
+            ({dishStatsForSelected?.reviewCount || 0} {t('reviewsCount')})
+          </span>
         </div>
+      </div>
 
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
-          <div className="flex items-center gap-3">
-            <div 
-              className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 px-1.5 py-0.5 rounded-md transition-colors"
-              onClick={() => setIsDetailsOpen(true)}
-            >
-              <Star size={14} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-xs font-bold text-gray-900">{restaurant.rating.toFixed(1)}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-bold">
-                {restaurant.reviewCount}
-              </span>
-              <span className="text-[8px] text-gray-300 uppercase font-black leading-none">{t('reviewsCount')}</span>
-            </div>
-            
-            {popularityPercent !== null && (
-               <div className={`${themeBgLight} ${themeText} px-2 py-1 rounded-lg flex flex-col items-start leading-tight border ${themeBorderLight}`}>
-                 <span className="text-[8px] font-black uppercase tracking-tighter">{t('popularity')}:</span>
-                 <span className="text-xs font-black">{popularityPercent}%</span>
-               </div>
-            )}
-          </div>
-          
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-              if (isIOS) {
-                setIsDirectionsOpen(true);
-              } else {
-                const url = `geo:${restaurant.location.lat},${restaurant.location.lng}?q=${restaurant.location.lat},${restaurant.location.lng}(${encodeURIComponent(restaurant.name)})`;
-                window.location.href = url;
-              }
-            }}
-            className={`flex flex-col items-center gap-0.5 ${themeText} hover:opacity-80 transition-opacity`}
+      {/* Popularity Line */}
+      <div className="bg-gray-50 rounded-xl px-3 py-2">
+        <p className="text-xs font-medium text-gray-600">
+          <span className="font-black text-[#1D9E75]">{popularityPercent}%</span> {t('popularity')} <span className="font-black">{t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))}</span>
+        </p>
+      </div>
+
+      {/* Dish Chips */}
+      <div className="flex flex-wrap gap-2">
+        {allDishStats.map((stats) => (
+          <span
+            key={stats.name}
+            className={`px-3 py-1 rounded-full text-[10px] font-black transition-colors ${
+              stats.name === selectedDish
+                ? 'bg-[#1D9E75] text-white'
+                : 'bg-gray-100 text-gray-500'
+            }`}
           >
-            <Navigation size={14} className={selectedCategory === 'food' ? "fill-[#1D9E75]/10" : "fill-blue-500/10"} />
-            <span className="text-[9px] font-black uppercase leading-none text-center">{t('getDirections')}</span>
+            {t(`dishes.${stats.name.toLowerCase()}`, t(`clothes.${stats.name.toLowerCase()}`, stats.name))}
+          </span>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-auto pt-2">
+        <div className="flex items-center gap-2 text-gray-400 text-xs font-bold">
+          {distanceKm !== undefined && (
+            <>
+              <span>{distanceKm} km</span>
+              <span>·</span>
+              <span>{durationMin} min</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onViewReviews?.(restaurantId)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black text-gray-600 hover:text-[#1D9E75] transition-colors"
+          >
+            <MessageSquare size={14} />
+            {t('reviews')}
+          </button>
+          <button
+            onClick={() => onGetDirections?.(restaurantId)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#1D9E75] text-white rounded-xl text-xs font-black shadow-sm hover:bg-[#168a65] transition-colors"
+          >
+            <Navigation size={14} />
+            {t('getDirections')}
           </button>
         </div>
-      </motion.div>
-
-      <DirectionsPicker 
-        isOpen={isDirectionsOpen}
-        onClose={() => setIsDirectionsOpen(false)}
-        location={restaurant.location}
-        name={restaurant.name}
-      />
-
-      <RestaurantDetailsModal 
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-        restaurant={restaurant}
-        onAddReview={onAddReview}
-        selectedDishes={selectedDishes}
-        selectedCategory={selectedCategory}
-      />
-    </>
+      </div>
+    </div>
   );
 }

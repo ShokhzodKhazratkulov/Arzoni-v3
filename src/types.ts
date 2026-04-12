@@ -54,7 +54,11 @@ export interface Review {
   dislikes: number;
   priceSpent: number;
   dishId: string;
+  tags: string[];
 }
+
+export const DISH_TYPES = ['Osh', 'Somsa', 'Shashlik', 'Manti', 'Norin', 'Plov', 'Lagman', 'Chuchvara', 'Shorva', 'Dimlama'];
+export const CLOTHING_TYPES = ['T-shirt', 'Jeans', 'Dress', 'Shoes', 'Jacket', 'Shirt', 'Skirt', 'Pants', 'Sweater', 'Coat'];
 
 export interface Banner {
   id: string;
@@ -68,5 +72,26 @@ export interface Banner {
   restaurant_name?: string; // For display in admin
   category?: 'food' | 'clothes';
 }
+
+export type DishStats = {
+  name: string;          // "Osh"
+  avgPrice: number;      // 31250
+  avgRating: number;     // 4.0
+  reviewCount: number;   // 4
+  popularity: number;    // 0.8  (80%)
+};
+
+export type AddReviewFormState = {
+  dish: string;            // "Osh" / "Somsa" / "Custom"
+  customDishName: string;
+  pricePaid: string;       // input value
+  rating: number;          // 1..5
+  visitDate: string;       // ISO date
+  priceFeeling: 'cheap' | 'fair' | 'expensive' | '';
+  portionSize: 'small' | 'normal' | 'big' | '';
+  title: string;
+  text: string;
+  tags: string[];          // ["students", "big_portion"]
+};
 
 export type SortOption = 'price_asc' | 'price_desc' | 'rating' | 'distance';

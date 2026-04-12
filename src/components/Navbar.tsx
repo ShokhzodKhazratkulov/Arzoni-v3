@@ -48,9 +48,9 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
           <div className="flex flex-col min-w-0">
             <div className="flex items-center">
               <div className="flex flex-col items-center mr-1.5 leading-none">
-                <span className="text-[8px] font-bold text-gray-900 leading-none">{t('categoryFood')}</span>
+                <span className="text-[8px] font-bold text-gray-900 leading-none">{t('foodCategory')}</span>
                 <div className="w-full border-t border-gray-900 my-px" />
-                <span className="text-[8px] font-bold text-gray-900 leading-none">{t('categoryClothes')}</span>
+                <span className="text-[8px] font-bold text-gray-900 leading-none">{t('clothesCategory')}</span>
               </div>
               <h1 className="text-[20px] sm:text-[24px] font-black text-gray-900 leading-none tracking-tighter truncate">
                 {t('appName')}
@@ -76,7 +76,7 @@ export default function Navbar({ onAdminClick }: NavbarProps) {
               className="hidden sm:flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg border border-amber-100 text-[9px] font-black uppercase tracking-wider hover:bg-amber-100 transition-colors"
             >
               <ShieldCheck size={12} />
-              {t('adminDashboard')}
+              {t('adminCenter')}
             </button>
           )}
 

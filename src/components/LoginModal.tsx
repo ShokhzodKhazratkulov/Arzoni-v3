@@ -71,29 +71,29 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     <CheckCircle2 size={32} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-gray-900 mb-2">Check your email</h3>
+                    <h3 className="text-xl font-black text-gray-900 mb-2">{t('checkEmail')}</h3>
                     <p className="text-gray-500 text-sm leading-relaxed">
-                      We've sent a magic login link to <span className="font-bold text-gray-900">{email}</span>. 
-                      Click the link in your inbox to sign in instantly.
+                      {t('magicLinkSent')} <span className="font-bold text-gray-900">{email}</span>. 
+                      {t('clickLink')}
                     </p>
                   </div>
                   <button
                     onClick={onClose}
                     className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-black transition-all"
                   >
-                    Got it
+                    {t('gotIt')}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-2xl font-black text-gray-900 mb-2">{t('login')}</h3>
-                    <p className="text-gray-500 text-sm">Sign in to access your account and manage listings.</p>
+                    <p className="text-gray-500 text-sm">{t('loginDescription')}</p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('emailAddress')}</label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
@@ -123,7 +123,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
-                          Send Magic Link
+                          {t('sendMagicLink')}
                           <ArrowRight size={18} />
                         </>
                       )}
@@ -135,7 +135,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                       <div className="w-full border-t border-gray-100"></div>
                     </div>
                     <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                      <span className="bg-white px-4 text-gray-400">Or continue with</span>
+                      <span className="bg-white px-4 text-gray-400">{t('orContinueWith')}</span>
                     </div>
                   </div>
 

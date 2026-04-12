@@ -25,8 +25,10 @@ export async function translateBatch(texts: string[], targetLang: string): Promi
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Translate the following list of strings into ${targetLang}. Return a JSON array of strings in the exact same order.
+      model: "gemini-2.0-flash",
+      contents: `Translate the following list of strings into ${targetLang}. 
+      Return a JSON array of strings in the exact same order.
+      Keep the word "Arzoni" as is, do not translate it.
       
       Strings to translate:
       ${JSON.stringify(toTranslate.map(t => t.text))}`,
