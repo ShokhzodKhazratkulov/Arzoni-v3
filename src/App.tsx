@@ -425,6 +425,7 @@ function AppContent() {
                     onAddRestaurant={() => setIsAddRestaurantOpen(true)}
                     selectedDishes={[selectedDish]}
                     selectedCategory={selectedCategory}
+                    restaurantStatsMap={restaurantStatsMap}
                   />
                 </div>
               ) : (
