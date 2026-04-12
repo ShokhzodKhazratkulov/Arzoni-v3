@@ -183,6 +183,11 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
                 <span className="font-bold">{selectedRestaurant.rating}</span>
                 <span>({selectedRestaurant.reviewCount})</span>
               </div>
+              {selectedRestaurant.workingHours && (
+                <p className="text-[9px] text-gray-500 mt-0.5 font-medium">
+                  {t('workingHours')}: {selectedRestaurant.workingHours}
+                </p>
+              )}
               <p className={`text-[10px] text-gray-600 mt-1 line-clamp-2 leading-relaxed ${isReview ? 'italic text-[#1D9E75] border-l border-[#1D9E75]/20 pl-1.5' : ''}`}>
                 {displayDescription}
               </p>

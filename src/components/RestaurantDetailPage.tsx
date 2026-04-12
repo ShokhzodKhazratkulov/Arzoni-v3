@@ -137,7 +137,12 @@ export default function RestaurantDetailPage() {
           </button>
           <div>
             <h1 className="text-xl font-black text-gray-900 leading-tight">{restaurant.name}</h1>
-            <p className="text-xs text-gray-400 font-bold">{restaurant.address}</p>
+            <div className="flex flex-col">
+              <p className="text-xs text-gray-400 font-bold">{restaurant.address}</p>
+              <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                {t('workingHours')}: {restaurant.workingHours || t('noDataHours')}
+              </p>
+            </div>
           </div>
         </div>
         <button
@@ -238,6 +243,13 @@ export default function RestaurantDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Trust Note */}
+        <div className="px-2">
+          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center">
+            {t('trustNoteDetail')}
+          </p>
+        </div>
 
         {/* Reviews List */}
         <section className="space-y-4">

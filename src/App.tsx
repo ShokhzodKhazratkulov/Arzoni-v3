@@ -374,6 +374,13 @@ function AppContent() {
                 setCustomDish={() => {}}
               />
 
+              {/* Trust Note */}
+              <div className="max-w-7xl mx-auto px-4 py-1">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                  {t('trustNote')}
+                </p>
+              </div>
+
               {/* View Mode Toggle */}
               <div className="max-w-7xl mx-auto px-4 py-2 flex justify-end">
                 <div className="bg-white rounded-xl border border-gray-100 p-1 flex shadow-sm">
@@ -413,6 +420,7 @@ function AppContent() {
                   sortOption={sortOption}
                   setSortOption={setSortOption}
                   onAddReview={(r) => navigate(`/restaurants/${r.id}/review`)}
+                  onAddRestaurantClick={() => setIsAddRestaurantOpen(true)}
                   selectedDishes={[selectedDish]}
                   selectedCategory={selectedCategory}
                   restaurantStatsMap={restaurantStatsMap}
