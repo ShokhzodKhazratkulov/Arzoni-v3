@@ -50,10 +50,13 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    googleMapsUrl: '',
     dishes: [] as string[],
     price: 0,
     description: '',
     workingHours: '',
+    phone: '',
+    socialLink: '',
     submitter: '',
     location: TASHKENT_CENTER,
     category: selectedCategory
@@ -62,145 +65,53 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
   const themeColor = formData.category === 'food' ? '#1D9E75' : '#3B82F6';
   const themeBg = formData.category === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
   const themeText = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
-  const themeBorder = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
   const themeRing = formData.category === 'food' ? 'focus:ring-[#1D9E75]' : 'focus:ring-blue-500';
   const themeHover = formData.category === 'food' ? 'hover:bg-[#168a65]' : 'hover:bg-blue-600';
-  const themeBgLight = formData.category === 'food' ? 'bg-[#1D9E75]/5' : 'bg-blue-500/5';
-  const themeBorderDashed = formData.category === 'food' ? 'border-[#1D9E75]' : 'border-blue-500';
-  const themeTextLight = formData.category === 'food' ? 'text-[#1D9E75]' : 'text-blue-500';
 
-  const [mode, setMode] = useState<'search' | 'add' | 'review'>('search');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [suggestions, setSuggestions] = useState<Restaurant[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
-  const [reviewPhotoFiles, setReviewPhotoFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  const [reviewData, setReviewData] = useState({
-    rating: 5,
-    comment: '',
-    submitter: '',
-    priceSpent: 0,
-    dishId: '',
-    customDishName: ''
-  });
-
   useEffect(() => {
-    if (isOpen) {
-      if (initialRestaurant) {
-        setSelectedRestaurant(initialRestaurant);
-        setMode('review');
-      } else {
-        setMode('search');
-      }
-    } else {
-      setMode('search');
-      setSearchTerm('');
-      setSuggestions([]);
-      setSelectedRestaurant(null);
+    if (!isOpen) {
       setPhoto(null);
       setPhotoFile(null);
-      setReviewPhotos([]);
-      setReviewPhotoFiles([]);
       setFormData({
         name: '',
         address: '',
+        googleMapsUrl: '',
         dishes: [],
         price: 0,
         description: '',
         workingHours: '',
+        phone: '',
+        socialLink: '',
         submitter: '',
         location: TASHKENT_CENTER,
         category: selectedCategory
       });
-      setReviewData({
-        rating: 5,
-        comment: '',
-        submitter: '',
-        priceSpent: 0,
-        dishId: '',
-        customDishName: ''
-      });
     }
-  }, [isOpen, initialRestaurant]);
-
-  useEffect(() => {
-    const searchRestaurants = async () => {
-      if (searchTerm.length < 2) {
-        setSuggestions([]);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        // Supabase search using ilike and category
-        const { data, error } = await supabase
-          .from('restaurants')
-          .select('*')
-          .eq('category', selectedCategory)
-          .ilike('name', `%${searchTerm}%`)
-          .limit(5);
-
-        if (error) throw error;
-        setSuggestions(data as Restaurant[]);
-      } catch (error) {
-        console.error('Error searching restaurants:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    const timeoutId = setTimeout(searchRestaurants, 300);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [isOpen, selectedCategory]);
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (mode === 'review') {
-      const newFiles = Array.from(files);
-      const validFiles = newFiles.filter(file => {
-        if (file.size > 5 * 1024 * 1024) {
-          setLocalError(t('imageTooLarge') || "One or more images are too large. Max 5MB per image.");
-          return false;
-        }
-        return true;
-      });
-
-      if (validFiles.length === 0) return;
-      setLocalError(null);
-
-      setReviewPhotoFiles(prev => [...prev, ...validFiles]);
-      
-      validFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setReviewPhotos(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-    } else {
-      const file = files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        setLocalError(t('imageTooLarge') || "Image is too large. Please select an image smaller than 5MB.");
-        return;
-      }
-      setLocalError(null);
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const file = files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      setLocalError(t('imageTooLarge') || "Image is too large. Max 5MB.");
+      return;
     }
+    setLocalError(null);
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhoto(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleDish = (id: string) => {
@@ -247,491 +158,71 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
     setIsSubmitting(true);
     
     try {
-      if (mode === 'review' && selectedRestaurant?.id) {
-        const finalDishId = reviewData.dishId === 'other' ? reviewData.customDishName : reviewData.dishId;
-        
-        if (!finalDishId) {
-          setLocalError(t('selectDishError') || "Please select a dish or enter a custom one.");
-          return;
-        }
-
-        await onAddReview(selectedRestaurant.id, {
-          ...reviewData,
-          submitter: reviewData.submitter.trim() || 'Anonymous',
-          dishId: finalDishId,
-          restaurantId: selectedRestaurant.id,
-          photoFiles: reviewPhotoFiles,
-          createdAt: new Date().toISOString(),
-          likes: 0,
-          dislikes: 0
-        });
-      } else {
-        await onSubmit({
-          ...formData,
-          submitter: formData.submitter.trim() || 'Anonymous',
-          category: selectedCategory,
-          name: formData.name || searchTerm,
-          rating: 0,
-          reviewCount: 0,
-          likes: 0,
-          dislikes: 0,
-          photoFile: photoFile, // Pass the file object
-          createdAt: new Date().toISOString()
-        });
-      }
+      await onSubmit({
+        ...formData,
+        submitter: formData.submitter.trim() || 'Anonymous',
+        category: formData.category,
+        rating: 0,
+        reviewCount: 0,
+        likes: 0,
+        dislikes: 0,
+        photoFile: photoFile,
+        createdAt: new Date().toISOString()
+      });
       onClose();
     } catch (error: any) {
       console.error('Submit error:', error);
-      const message = error.message || error.details || (error.error_description) || (typeof error === 'object' ? JSON.stringify(error) : String(error));
-      setLocalError(message);
+      setLocalError(error.message || String(error));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const renderSearch = () => (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {formData.category === 'food' ? t('formName') : t('formNameClothes')}
-        </label>
-        <div className="relative">
-          <input
-            autoFocus
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full px-4 py-3 pl-11 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder={formData.category === 'food' ? t('searchRestaurantPlaceholder') : t('searchShopPlaceholder')}
-          />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          {isSearching && (
-            <Loader2 className={`absolute right-4 top-1/2 -translate-y-1/2 ${themeText} animate-spin`} size={18} />
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {suggestions.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-2"
-          >
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">
-              {selectedCategory === 'food' ? t('existingRestaurants') : t('existingShops')}
-            </p>
-            <div className="space-y-2">
-              {suggestions.map((r, idx) => (
-                <button
-                  key={r.id || `suggestion-${idx}`}
-                  type="button"
-                  onClick={() => {
-                    setSelectedRestaurant(r);
-                    setMode('review');
-                  }}
-                  className="w-full p-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-100 transition-all text-left"
-                >
-                  <div>
-                    <h4 className="font-bold text-gray-900">{r.name}</h4>
-                    <p className="text-xs text-gray-500">{r.address}</p>
-                  </div>
-                  <div className={`flex items-center gap-1 ${themeText} font-bold text-sm`}>
-                    <Star size={14} className={`fill-[${themeColor}]`} />
-                    {r.rating.toFixed(1)}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {searchTerm.length >= 2 && !isSearching && (
-        <button
-          type="button"
-          onClick={() => {
-            setFormData({ ...formData, name: searchTerm });
-            setMode('add');
-          }}
-          className={`w-full p-4 flex items-center gap-3 ${themeBgLight} ${themeTextLight} rounded-xl border border-dashed ${themeBorderDashed} hover:bg-opacity-10 transition-all`}
-        >
-          <div className={`w-10 h-10 rounded-full ${themeBg} text-white flex items-center justify-center font-bold text-xl`}>
-            +
-          </div>
-          <div className="text-left">
-            <p className="font-bold">
-              {selectedCategory === 'food' ? t('addNewRestaurant') : t('addNewShop')}
-            </p>
-            <p className="text-xs opacity-70">"{searchTerm}" {t('notInList')}</p>
-          </div>
-        </button>
-      )}
-    </div>
-  );
-
-  const renderReview = () => (
-    <div className="space-y-4">
-      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
-        <div>
-          <h4 className="font-bold text-gray-900">{selectedRestaurant?.name}</h4>
-          <p className="text-xs text-gray-500">{selectedRestaurant?.address}</p>
-        </div>
-        <button 
-          type="button"
-          onClick={() => setMode('search')}
-          className={`text-xs font-bold ${themeText} hover:underline`}
-        >
-          {t('change') || "Change"}
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yourRating') || "Your Rating"}</label>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setReviewData({ ...reviewData, rating: star })}
-              className="p-1 transition-transform active:scale-90"
-            >
-              <Star 
-                size={32} 
-                className={cn(
-                  "transition-colors",
-                  star <= reviewData.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
-                )} 
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {selectedCategory === 'food' ? t('whatDidYouEat') : t('whatDidYouBuy')}
-        </label>
-        <select
-          value={reviewData.dishId}
-          onChange={(e) => setReviewData({ ...reviewData, dishId: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none bg-white`}
-        >
-          <option value="">
-            {selectedCategory === 'food' ? t('selectDish') : t('selectDishClothes')}
-          </option>
-          {(selectedCategory === 'food' ? DISH_TYPES : CLOTHING_TYPES).map((item) => (
-            <option key={item.id} value={item.id}>
-              {t(item.label)}
-            </option>
-          ))}
-          <option value="other">{selectedCategory === 'food' ? t('otherDish') : t('otherDishClothes')}</option>
-        </select>
-      </div>
-
-      {reviewData.dishId === 'other' && (
-        <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            {selectedCategory === 'food' ? t('customDish') : t('customDishClothes') || t('customDish')}
-          </label>
-          <input
-            required
-            type="text"
-            value={reviewData.customDishName}
-            onChange={(e) => setReviewData({ ...reviewData, customDishName: e.target.value })}
-            className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder={selectedCategory === 'food' ? t('customDishPlaceholder') : t('customDishPlaceholderClothes')}
-          />
-        </div>
-      )}
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yourComment') || "Your Comment"}</label>
-        <textarea
-          required
-          value={reviewData.comment}
-          onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none h-24 resize-none`}
-          placeholder={t('commentPlaceholder') || "Tell us about your experience..."}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formSubmitter')}</label>
-          <input
-            type="text"
-            value={reviewData.submitter}
-            onChange={(e) => setReviewData({ ...reviewData, submitter: e.target.value })}
-            className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder={t('anonymous') || "Anonymous"}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('priceSpent')}</label>
-          <input
-            required
-            type="number"
-            min="0"
-            value={reviewData.priceSpent || ''}
-            onChange={(e) => setReviewData({ ...reviewData, priceSpent: Number(e.target.value) })}
-            className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder="0"
-          />
-        </div>
-      </div>
-
-      {renderPhotoSection()}
-    </div>
-  );
-
   const renderPhotoSection = () => (
     <div className="space-y-2">
       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
         <Camera size={12} />
-        {mode === 'review' ? (t('addPhotos') || "Add Photos") : (t('addPhoto') || "Add Profile Photo")}
+        {t('addPhoto')}
       </label>
-      <div className="flex flex-wrap gap-4 items-center">
-        {mode === 'review' ? (
-          <>
-            {reviewPhotos.map((p, idx) => (
-              <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
-                <img src={p} alt={`Captured ${idx}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReviewPhotos(prev => prev.filter((_, i) => i !== idx));
-                    setReviewPhotoFiles(prev => prev.filter((_, i) => i !== idx));
-                  }}
-                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            ))}
+      <div className="flex items-center gap-4">
+        {photo ? (
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+            <img src={photo} alt="Captured" className="w-full h-full object-cover" />
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:${themeBorderDashed} hover:${themeText} transition-all`}
+              onClick={() => {
+                setPhoto(null);
+                setPhotoFile(null);
+              }}
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
             >
-              <Camera size={24} />
-              <span className="text-[10px] font-bold mt-1 uppercase">{t('addMore') || "Add More"}</span>
+              <X size={20} />
             </button>
-          </>
+          </div>
         ) : (
-          photo ? (
-            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
-              <img src={photo} alt="Captured" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => {
-                  setPhoto(null);
-                  setPhotoFile(null);
-                }}
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:${themeBorderDashed} hover:${themeText} transition-all`}
-            >
-              <Camera size={24} />
-              <span className="text-[10px] font-bold mt-1 uppercase">{t('takePhoto') || "Take Photo"}</span>
-            </button>
-          )
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={`w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-[#1D9E75] hover:text-[#1D9E75] transition-all`}
+          >
+            <Camera size={24} />
+            <span className="text-[10px] font-bold mt-1 uppercase">{t('takePhoto')}</span>
+          </button>
         )}
         <input
           type="file"
           accept="image/*"
-          multiple={mode === 'review'}
-          capture={mode === 'review' ? undefined : "environment"}
+          capture="environment"
           ref={fileInputRef}
           onChange={handleCapture}
           className="hidden"
         />
-        {mode === 'review' ? (
-          reviewPhotos.length === 0 && (
-            <p className="text-[10px] text-gray-400 italic max-w-[150px]">
-              {t('reviewPhotoHint') || "Add photos of the food, menu, or place to help others"}
-            </p>
-          )
-        ) : (
-          !photo && (
-            <p className="text-[10px] text-gray-400 italic max-w-[150px]">
-              {t('cameraOnlyHint') || "Tap to open camera and take a photo of the food or place"}
-            </p>
-          )
+        {!photo && (
+          <p className="text-[10px] text-gray-400 italic max-w-[150px]">
+            {t('cameraOnlyHint')}
+          </p>
         )}
       </div>
-    </div>
-  );
-
-  const renderAdd = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('category') || "Category"}</label>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, category: 'food' })}
-            className={cn(
-              "flex-1 py-3 rounded-xl font-bold text-sm border-2 transition-all",
-              formData.category === 'food' 
-                ? "bg-[#1D9E75] border-[#1D9E75] text-white shadow-md" 
-                : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
-            )}
-          >
-            {t('categoryFood')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, category: 'clothes' })}
-            className={cn(
-              "flex-1 py-3 rounded-xl font-bold text-sm border-2 transition-all",
-              formData.category === 'clothes' 
-                ? "bg-indigo-500 border-indigo-500 text-white shadow-md" 
-                : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
-            )}
-          >
-            {t('categoryClothes')}
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {formData.category === 'food' ? t('formName') : t('formNameClothes')}
-        </label>
-        <input
-          required
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formAddress')}</label>
-        <input
-          required
-          type="text"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-          placeholder={t('formAddressPlaceholder') || "Enter street address"}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-          <MapPin size={12} />
-          {t('selectOnMap') || "Select Location on Map"}
-        </label>
-        <div className="h-[180px] w-full rounded-xl overflow-hidden border border-gray-200 relative">
-          <APIProvider apiKey={apiKey}>
-            <Map
-              defaultCenter={formData.location}
-              defaultZoom={13}
-              mapId="ADD_RESTAURANT_MAP"
-              onClick={handleMapClick}
-              onIdle={(e) => {
-                mapRef.current = e.map;
-              }}
-              disableDefaultUI={true}
-              zoomControl={true}
-              gestureHandling={'greedy'}
-            >
-              <AdvancedMarker position={formData.location}>
-                <Pin background={themeColor} borderColor={'#ffffff'} glyphColor={'#ffffff'} />
-              </AdvancedMarker>
-            </Map>
-          </APIProvider>
-          <button
-            type="button"
-            onClick={handleRecenter}
-            className={`absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg border border-gray-200 ${themeText} hover:bg-gray-50 transition-all z-10`}
-            title={formData.category === 'food' ? t('findNearMe') : t('findNearMeClothes')}
-          >
-            <MapPin size={20} />
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {formData.category === 'food' ? t('formDishes') : t('formDishesClothes')}
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {(formData.category === 'food' ? DISH_TYPES : CLOTHING_TYPES).map((dish) => (
-            <button
-              key={dish.id}
-              type="button"
-              onClick={() => toggleDish(dish.id)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-2",
-                formData.dishes.includes(dish.id)
-                  ? `${formData.category === 'food' ? 'bg-[#1D9E75] border-[#1D9E75]' : 'bg-blue-500 border-blue-500'} text-white shadow-sm`
-                  : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
-              )}
-            >
-              {t(dish.label)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formPrice')}</label>
-          <input
-            required
-            type="number"
-            min="0"
-            value={formData.price || ''}
-            onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-            className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder="0"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formSubmitter')}</label>
-          <input
-            type="text"
-            value={formData.submitter}
-            onChange={(e) => setFormData({ ...formData, submitter: e.target.value })}
-            className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-            placeholder={t('anonymous') || "Anonymous"}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('workingHours')}</label>
-        <input
-          type="text"
-          value={formData.workingHours}
-          onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
-          placeholder="e.g. 09:00 - 22:00"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formDescription')}</label>
-        <textarea
-          maxLength={200}
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none h-20 resize-none`}
-        />
-      </div>
-
-      {renderPhotoSection()}
     </div>
   );
 
@@ -747,9 +238,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
           >
             <div className={`p-6 border-b border-gray-100 flex justify-between items-center ${themeBg} text-white`}>
               <h2 className="text-xl font-bold">
-                {mode === 'search' ? (formData.category === 'food' ? t('addRestaurant') : t('addShop')) : 
-                 mode === 'review' ? t('addReview') : 
-                 (formData.category === 'food' ? t('addNewRestaurant') : t('addNewShop'))}
+                {formData.category === 'food' ? t('addRestaurant') : t('addShop')}
               </h2>
               <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-all">
                 <X size={24} />
@@ -764,35 +253,213 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
                 </div>
               )}
               
-              {mode === 'search' && renderSearch()}
-              {mode === 'review' && renderReview()}
-              {mode === 'add' && renderAdd()}
+              <div className="space-y-6">
+                {/* Basic Info */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+                    {t('formBasicInfo')}
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formCategory')}</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, category: 'food' })}
+                        className={cn(
+                          "flex-1 py-3 rounded-xl font-bold text-sm border-2 transition-all",
+                          formData.category === 'food' 
+                            ? "bg-[#1D9E75] border-[#1D9E75] text-white shadow-md" 
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                        )}
+                      >
+                        {t('categoryFood')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, category: 'clothes' })}
+                        className={cn(
+                          "flex-1 py-3 rounded-xl font-bold text-sm border-2 transition-all",
+                          formData.category === 'clothes' 
+                            ? "bg-blue-500 border-blue-500 text-white shadow-md" 
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                        )}
+                      >
+                        {t('categoryClothes')}
+                      </button>
+                    </div>
+                  </div>
 
-              {mode !== 'search' && (
-                <div className="flex gap-3 pt-6">
-                  <button
-                    type="button"
-                    onClick={() => setMode('search')}
-                    className="flex-1 px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-all"
-                  >
-                    {t('back') || "Back"}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`flex-1 px-6 py-3 ${themeBg} text-white rounded-xl font-bold ${themeHover} transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 size={18} className="animate-spin" />
-                        {t('saving') || "Saving..."}
-                      </>
-                    ) : (
-                      t('submit')
-                    )}
-                  </button>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formName')}</label>
+                    <input
+                      required
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                      placeholder={formData.category === 'food' ? t('searchRestaurantPlaceholder') : t('searchShopPlaceholder')}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formAddress')}</label>
+                    <input
+                      required
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                      placeholder="e.g. Beruniy ko'chasi, 12"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      <MapPin size={12} />
+                      {t('formMapUrl')}
+                    </label>
+                    <div className="h-[180px] w-full rounded-xl overflow-hidden border border-gray-200 relative mb-2">
+                      <APIProvider apiKey={apiKey}>
+                        <Map
+                          defaultCenter={formData.location}
+                          defaultZoom={13}
+                          mapId="ADD_PLACE_MAP"
+                          onClick={handleMapClick}
+                          onIdle={(e) => {
+                            mapRef.current = e.map;
+                          }}
+                          disableDefaultUI={true}
+                          zoomControl={true}
+                          gestureHandling={'greedy'}
+                        >
+                          <AdvancedMarker position={formData.location}>
+                            <Pin background={themeColor} borderColor={'#ffffff'} glyphColor={'#ffffff'} />
+                          </AdvancedMarker>
+                        </Map>
+                      </APIProvider>
+                      <button
+                        type="button"
+                        onClick={handleRecenter}
+                        className={`absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg border border-gray-200 ${themeText} hover:bg-gray-50 transition-all z-10`}
+                      >
+                        <MapPin size={20} />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.googleMapsUrl}
+                      onChange={(e) => setFormData({ ...formData, googleMapsUrl: e.target.value })}
+                      className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                      placeholder="Google Maps URL (optional if selected on map)"
+                    />
+                  </div>
                 </div>
-              )}
+
+                {/* Working Hours */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+                    {t('workingHours')}
+                  </h3>
+                  <input
+                    type="text"
+                    value={formData.workingHours}
+                    onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                    className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                    placeholder="e.g. Har kuni 09:00 – 22:00"
+                  />
+                </div>
+
+                {/* Dishes / Products */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+                    {formData.category === 'food' ? t('formDishesFood') : t('formDishesClothes')}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.category === 'food' ? DISH_TYPES : CLOTHING_TYPES).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => toggleDish(item.id)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-2",
+                          formData.dishes.includes(item.id)
+                            ? `${themeBg} border-transparent text-white shadow-sm`
+                            : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
+                        )}
+                      >
+                        {t(item.label)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+                    {t('formContact')}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formPhone')}</label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                        placeholder="+998 90 123 45 67"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formSocial')}</label>
+                      <input
+                        type="text"
+                        value={formData.socialLink}
+                        onChange={(e) => setFormData({ ...formData, socialLink: e.target.value })}
+                        className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                        placeholder="@username or link"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {renderPhotoSection()}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('formSubmitter')}</label>
+                  <input
+                    type="text"
+                    value={formData.submitter}
+                    onChange={(e) => setFormData({ ...formData, submitter: e.target.value })}
+                    className={`w-full px-4 py-2 border border-gray-200 rounded-xl ${themeRing} focus:outline-none`}
+                    placeholder={t('anonymous')}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-6">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-all"
+                >
+                  {t('cancel') || "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`flex-1 px-6 py-3 ${themeBg} text-white rounded-xl font-black ${themeHover} transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      {t('saving')}
+                    </>
+                  ) : (
+                    t('submit')
+                  )}
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>

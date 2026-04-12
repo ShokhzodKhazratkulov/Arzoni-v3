@@ -30,6 +30,7 @@ export interface Restaurant {
   dishStats?: {
     [dishId: string]: {
       avgPrice: number;
+      avgRating: number;
       reviewCount: number;
       bestComment?: string;
       displayName?: string;

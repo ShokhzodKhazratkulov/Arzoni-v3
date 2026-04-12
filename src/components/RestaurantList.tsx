@@ -83,12 +83,6 @@ export default function RestaurantList({
               {selectedCategory === 'food' ? t('noResults') : t('noResultsClothes')}
             </p>
           </div>
-          <button
-            onClick={onAddRestaurantClick}
-            className="mt-2 px-6 py-3 bg-[#1D9E75] text-white rounded-2xl font-black text-sm shadow-lg shadow-[#1D9E75]/20 hover:scale-105 transition-transform"
-          >
-            {t('leaveReviewCTA')}
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

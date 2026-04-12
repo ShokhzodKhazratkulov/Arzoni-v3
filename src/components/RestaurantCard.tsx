@@ -52,35 +52,45 @@ export default function RestaurantCard({
       </div>
 
       {/* Main Stats Line */}
-      <div className="flex justify-between items-center py-2 border-y border-gray-50">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            {t('formPrice')} ({t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))})
-          </span>
-          <span className={`font-black text-[#1D9E75] ${isLowReviewCount ? 'text-base' : 'text-lg'}`}>
-            {dishStatsForSelected?.avgPrice.toLocaleString() || '0'} {t('som')}
-          </span>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1">
-            <Star size={16} className="text-yellow-400 fill-yellow-400" />
-            <span className={`font-black text-gray-900 ${isLowReviewCount ? 'text-base' : 'text-lg'}`}>
-              {dishStatsForSelected?.avgRating || '0.0'}
+      {dishStatsForSelected ? (
+        <div className="flex justify-between items-center py-2 border-y border-gray-50">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              {t('formPrice')} ({t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))})
+            </span>
+            <span className={`font-black text-[#1D9E75] ${isLowReviewCount ? 'text-base' : 'text-lg'}`}>
+              {dishStatsForSelected.avgPrice.toLocaleString()} {t('som')}
             </span>
           </div>
-          <span className="text-[10px] font-bold text-gray-400">
-            ({dishStatsForSelected?.reviewCount || 0} {t('reviewsCount')})
-          </span>
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-1">
+              <Star size={16} className="text-yellow-400 fill-yellow-400" />
+              <span className={`font-black text-gray-900 ${isLowReviewCount ? 'text-base' : 'text-lg'}`}>
+                {dishStatsForSelected.avgRating.toFixed(1)}
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-gray-400">
+              ({dishStatsForSelected.reviewCount} {t('reviewsCount')})
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="py-3 border-y border-gray-50">
+          <p className="text-xs text-gray-500 font-bold italic">
+            {t('noReviewsHint')}
+          </p>
+        </div>
+      )}
 
       {/* Popularity Line & Warning */}
       <div className="space-y-2">
-        <div className="bg-gray-50 rounded-xl px-3 py-2">
-          <p className="text-xs font-medium text-gray-600">
-            <span className="font-black text-[#1D9E75]">{popularityPercent}%</span> {t('popularity')} <span className="font-black">{t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))}</span>
-          </p>
-        </div>
+        {dishStatsForSelected && (
+          <div className="bg-gray-50 rounded-xl px-3 py-2">
+            <p className="text-xs font-medium text-gray-600">
+              <span className="font-black text-[#1D9E75]">{popularityPercent}%</span> {t('popularity')} <span className="font-black">{t(`dishes.${selectedDish.toLowerCase()}`, t(`clothes.${selectedDish.toLowerCase()}`, selectedDish))}</span>
+            </p>
+          </div>
+        )}
         
         {isLowReviewCount && (
           <p className="text-[10px] text-gray-400 italic px-1">

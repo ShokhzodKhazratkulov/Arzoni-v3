@@ -132,8 +132,13 @@ export default function AddReviewPage() {
       const prices = dishGroupedPrices[dishId];
       const avgDishPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
       
+      // Calculate avg rating for this dish
+      const dishReviews = reviews.filter(r => r.dish_id === dishId);
+      const avgDishRating = Number((dishReviews.reduce((acc, curr) => acc + curr.rating, 0) / dishReviews.length).toFixed(1));
+      
       dishStats[dishId] = {
         avgPrice: avgDishPrice,
+        avgRating: avgDishRating,
         reviewCount: dishCounts[dishId],
       };
     });
@@ -336,7 +341,7 @@ export default function AddReviewPage() {
             <div className="space-y-4">
               <label className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider">
                 <Calendar size={16} className="text-[#1D9E75]" />
-                {t('formAddress')}
+                {t('formVisitDate')}
               </label>
               <input
                 type="date"

@@ -15,7 +15,7 @@ import AddRestaurantModal from './components/AddRestaurantModal';
 import AdminDashboard from './components/AdminDashboard';
 import './i18n';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Map as MapIcon, LayoutList } from 'lucide-react';
+import { AlertTriangle, Map as MapIcon, LayoutList, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { NotificationHandler } from './components/NotificationHandler';
@@ -374,13 +374,6 @@ function AppContent() {
                 setCustomDish={() => {}}
               />
 
-              {/* Trust Note */}
-              <div className="max-w-7xl mx-auto px-4 py-1">
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center">
-                  {t('trustNote')}
-                </p>
-              </div>
-
               {/* View Mode Toggle */}
               <div className="max-w-7xl mx-auto px-4 py-2 flex justify-end">
                 <div className="bg-white rounded-xl border border-gray-100 p-1 flex shadow-sm">
@@ -406,7 +399,27 @@ function AppContent() {
               </div>
 
               {viewMode === 'map' ? (
-                <div className="max-w-7xl mx-auto px-4 py-4 w-full">
+                <div className="max-w-7xl mx-auto px-4 py-4 w-full space-y-4">
+                  {/* Trust Note and Add Button - Only on Map Page */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-100/50">
+                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                      <p className="text-[10px] sm:text-xs font-bold text-amber-800 leading-tight">
+                        {t('trustNote')}
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => setIsAddRestaurantOpen(true)}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#1D9E75] text-white rounded-xl font-black shadow-lg hover:bg-[#168a65] transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white">
+                        +
+                      </div>
+                      {t('addPlaceCTA')}
+                    </button>
+                  </div>
+
                   <MapContainer 
                     restaurants={filteredRestaurants}
                     onAddRestaurant={() => setIsAddRestaurantOpen(true)}
@@ -449,17 +462,19 @@ function AppContent() {
           </div>
         )}
 
-        <footer className="bg-white border-t border-gray-100 py-8 px-4 mt-12">
+        <footer className="bg-white border-t border-gray-100 py-12 px-4 mt-20">
           <div className="max-w-7xl mx-auto text-center">
-            <div className="flex justify-center gap-0.5 mb-4 items-center">
-              <div className="w-8 h-4 bg-[#1D9E75]" title="Green"></div>
-              <div className="w-1 h-4 bg-[#CE1126]" title="Red"></div>
-              <div className="w-8 h-4 bg-white border border-gray-100" title="White"></div>
-              <div className="w-1 h-4 bg-[#CE1126]" title="Red"></div>
-              <div className="w-8 h-4 bg-[#0099B5]" title="Blue"></div>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-[#1D9E75] rounded-lg flex items-center justify-center text-white shadow-sm">
+                <MapPin size={18} />
+              </div>
+              <span className="text-xl font-black text-gray-900 tracking-tighter">{t('appName')}</span>
             </div>
-            <p className="text-gray-400 text-xs font-medium whitespace-nowrap">
-              &copy; {new Date().getFullYear()} Arzoni — {t('taglinePart1')} {t('foodItem')}/{t('clothesItem')} {t('taglinePart2')}
+            <p className="text-sm text-gray-500 font-bold mb-2">
+              {t('tagline')}
+            </p>
+            <p className="text-xs text-gray-400 font-medium">
+              &copy; {new Date().getFullYear()} Arzoni. {t('trustNote')}
             </p>
           </div>
         </footer>
