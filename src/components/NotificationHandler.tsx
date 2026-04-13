@@ -67,7 +67,7 @@ export const NotificationHandler = () => {
     };
 
     initOneSignal();
-  }, [user]);
+  }, [user?.id]);
 
   return null;
 };

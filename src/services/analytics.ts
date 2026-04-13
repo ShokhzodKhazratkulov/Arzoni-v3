@@ -11,7 +11,7 @@ export const trackVisit = async () => {
     localStorage.setItem(SESSION_KEY, sessionId);
 
     const { error } = await supabase
-      .from('visits')
+      .from('app_analytics')
       .insert([{
         session_id: sessionId,
         first_seen_at: now,
@@ -21,37 +21,41 @@ export const trackVisit = async () => {
         device_type: 'web'
       }]);
     
-    if (error) console.error('Error tracking new visit:', error);
+    if (error) {
+      if (error.code === '406' || error.message?.includes('406')) return;
+      console.warn('Analytics tracking failed (non-critical):', error.message);
+    }
   } else {
     // We need to find the row with this session_id and update it
-    // Note: In a real app, we might want to handle multiple rows per session if we track daily visits
-    // but for simplicity, we'll just update the existing row or create a new one if not found
-    
     const { data, error: fetchError } = await supabase
-      .from('visits')
+      .from('app_analytics')
       .select('id, visit_count')
       .eq('session_id', sessionId)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-      console.error('Error fetching visit record:', fetchError);
+      if (fetchError.code === '406' || fetchError.message?.includes('406')) return;
+      console.warn('Analytics fetch failed (non-critical):', fetchError.message);
       return;
     }
 
     if (data) {
       const { error: updateError } = await supabase
-        .from('visits')
+        .from('app_analytics')
         .update({
           last_seen_at: now,
           visit_count: data.visit_count + 1
         })
         .eq('id', data.id);
       
-      if (updateError) console.error('Error updating visit:', updateError);
+      if (updateError) {
+        if (updateError.code === '406' || updateError.message?.includes('406')) return;
+        console.warn('Analytics update failed (non-critical):', updateError.message);
+      }
     } else {
-      // If session_id exists in localStorage but not in DB (e.g. DB reset)
-      await supabase
-        .from('visits')
+      // If session_id exists in localStorage but not in DB
+      const { error: insertError } = await supabase
+        .from('app_analytics')
         .insert([{
           session_id: sessionId,
           first_seen_at: now,
@@ -60,6 +64,10 @@ export const trackVisit = async () => {
           user_agent: navigator.userAgent,
           device_type: 'web'
         }]);
+      
+      if (insertError && !(insertError.code === '406' || insertError.message?.includes('406'))) {
+        console.warn('Analytics fallback insert failed (non-critical):', insertError.message);
+      }
     }
   }
 };

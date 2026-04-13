@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { trackVisit } from '../services/visits';
+import { trackVisit } from '../services/analytics';
 
 export const useVisitTracking = () => {
   useEffect(() => {
