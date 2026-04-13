@@ -26,6 +26,10 @@ export const getListingsWithStats = async (filters: {
   const { data, error } = await query;
 
   if (error) {
+    if (error.code === '406' || error.message?.includes('406')) {
+      console.warn('Database schema cache is stale. Please run the SQL script to refresh it.');
+      return [];
+    }
     console.error('Error fetching listings:', error);
     return [];
   }

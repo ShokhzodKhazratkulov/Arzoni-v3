@@ -12,6 +12,10 @@ export const getActiveBanners = async () => {
     .order('position', { ascending: true });
   
   if (error) {
+    if (error.code === '406' || error.message?.includes('406')) {
+      console.warn('Banners fetch failed (schema stale).');
+      return [];
+    }
     console.error('Error fetching active banners:', error);
     return [];
   }

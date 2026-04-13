@@ -3,8 +3,22 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const trackVisit = async () => {
   const SESSION_KEY = 'arzoni_session_id';
+  const CIRCUIT_BREAKER_KEY = 'arzoni_analytics_disabled';
+  
+  // If analytics are known to be broken (e.g. 406 error), don't even try
+  if (sessionStorage.getItem(CIRCUIT_BREAKER_KEY)) return;
+
   let sessionId = localStorage.getItem(SESSION_KEY);
   const now = new Date().toISOString();
+
+  const handleAnalyticsError = (error: any) => {
+    if (error.code === '406' || error.message?.includes('406') || error.code === 'PGRST204') {
+      // Table doesn't exist or schema is stale. Disable for this session to stop console spam.
+      sessionStorage.setItem(CIRCUIT_BREAKER_KEY, 'true');
+      return true;
+    }
+    return false;
+  };
 
   if (!sessionId) {
     sessionId = uuidv4();
@@ -22,7 +36,7 @@ export const trackVisit = async () => {
       }]);
     
     if (error) {
-      if (error.code === '406' || error.message?.includes('406')) return;
+      if (handleAnalyticsError(error)) return;
       console.warn('Analytics tracking failed (non-critical):', error.message);
     }
   } else {
@@ -34,7 +48,7 @@ export const trackVisit = async () => {
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-      if (fetchError.code === '406' || fetchError.message?.includes('406')) return;
+      if (handleAnalyticsError(fetchError)) return;
       console.warn('Analytics fetch failed (non-critical):', fetchError.message);
       return;
     }
@@ -49,7 +63,7 @@ export const trackVisit = async () => {
         .eq('id', data.id);
       
       if (updateError) {
-        if (updateError.code === '406' || updateError.message?.includes('406')) return;
+        if (handleAnalyticsError(updateError)) return;
         console.warn('Analytics update failed (non-critical):', updateError.message);
       }
     } else {
@@ -65,7 +79,8 @@ export const trackVisit = async () => {
           device_type: 'web'
         }]);
       
-      if (insertError && !(insertError.code === '406' || insertError.message?.includes('406'))) {
+      if (insertError) {
+        if (handleAnalyticsError(insertError)) return;
         console.warn('Analytics fallback insert failed (non-critical):', insertError.message);
       }
     }
