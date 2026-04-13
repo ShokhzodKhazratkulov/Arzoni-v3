@@ -175,15 +175,11 @@ function AppContent() {
 
   const handleAddRestaurant = async (data: any) => {
     try {
-      await createListing({
-        name: data.name,
-        type: selectedCategory,
-        address: data.address,
-        latitude: data.location.lat,
-        longitude: data.location.lng,
-        working_hours: data.workingHours,
-        is_active: true
-      });
+      // The data from AddRestaurantModal is already mapped to the database schema
+      // We extract photoFile to handle it separately if needed, and pass the rest to createListing
+      const { photoFile, ...listingData } = data;
+      
+      await createListing(listingData);
       fetchData();
       setIsAddRestaurantOpen(false);
     } catch (error) {
