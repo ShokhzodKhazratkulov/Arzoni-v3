@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Star, MapPin, Navigation, User, ThumbsUp, ThumbsDown, MoreVertical, Edit2, Camera, Check, X as CloseIcon, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Restaurant, Review } from '../types';
+import { Listing, Review } from '../types';
 import { supabase } from '../supabase';
 import { DISH_TYPES, CLOTHING_TYPES } from '../constants';
 import imageCompression from 'browser-image-compression';
@@ -36,7 +36,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 interface RestaurantDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  restaurant: Restaurant;
+  restaurant: Listing;
   onAddReview?: () => void;
   selectedDishes?: string[];
   customDish?: string;
@@ -55,7 +55,7 @@ export default function RestaurantDetailsModal({
   const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
+  const [restaurant, setRestaurant] = useState<Listing>(initialRestaurant);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(initialRestaurant.name);
@@ -65,16 +65,12 @@ export default function RestaurantDetailsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSponsoredValid = useMemo(() => {
-    if (!restaurant.isSponsored) return false;
-    if (!restaurant.sponsoredExpiry) return true;
-    return new Date(restaurant.sponsoredExpiry) > new Date();
-  }, [restaurant.isSponsored, restaurant.sponsoredExpiry]);
+    return restaurant.is_sponsored;
+  }, [restaurant.is_sponsored]);
 
   const isVerifiedValid = useMemo(() => {
-    if (!restaurant.isVerified) return false;
-    if (!restaurant.verifiedExpiry) return true;
-    return new Date(restaurant.verifiedExpiry) > new Date();
-  }, [restaurant.isVerified, restaurant.verifiedExpiry]);
+    return restaurant.is_verified;
+  }, [restaurant.is_verified]);
 
   const themeColor = selectedCategory === 'food' ? '#1D9E75' : '#3B82F6';
   const themeBg = selectedCategory === 'food' ? 'bg-[#1D9E75]' : 'bg-blue-500';
@@ -99,22 +95,13 @@ export default function RestaurantDetailsModal({
       const { data, error } = await supabase
         .from('reviews')
         .select('*')
-        .eq('restaurant_id', restaurant.id)
+        .eq('listing_id', restaurant.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching reviews:', error);
       } else {
-        const mappedReviews = (data || []).map(r => ({
-          ...r,
-          restaurantId: r.restaurant_id,
-          createdAt: r.created_at,
-          photoUrl: r.photo_url,
-          photoUrls: r.photo_urls || (r.photo_url ? [r.photo_url] : []),
-          priceSpent: r.price_spent,
-          dishId: r.dish_id
-        }));
-        setReviews(mappedReviews as Review[]);
+        setReviews(data as Review[]);
       }
       setLoading(false);
     };
@@ -127,7 +114,7 @@ export default function RestaurantDetailsModal({
         event: '*', 
         table: 'reviews', 
         schema: 'public',
-        filter: `restaurant_id=eq.${restaurant.id}`
+        filter: `listing_id=eq.${restaurant.id}`
       }, () => {
         fetchReviews();
       })
@@ -138,20 +125,14 @@ export default function RestaurantDetailsModal({
       .channel(`restaurant_modal_${restaurant.id}`)
       .on('postgres_changes', {
         event: 'UPDATE',
-        table: 'restaurants',
+        table: 'listings',
         schema: 'public',
         filter: `id=eq.${restaurant.id}`
       }, (payload) => {
         const r = payload.new as any;
         setRestaurant(prev => ({
           ...prev,
-          name: r.name,
-          photoUrl: r.photo_url,
-          likes: r.likes,
-          dislikes: r.dislikes,
-          rating: r.avg_rating || r.rating,
-          reviewCount: r.review_count || r.reviewCount,
-          dishStats: r.dish_stats || r.dishStats
+          ...r
         }));
       })
       .subscribe();
@@ -171,7 +152,7 @@ export default function RestaurantDetailsModal({
     try {
       setIsUpdating(true);
       const { error } = await supabase
-        .from('restaurants')
+        .from('listings')
         .update({ name: newName.trim() })
         .eq('id', restaurant.id);
 
@@ -217,14 +198,14 @@ export default function RestaurantDetailsModal({
         .getPublicUrl(filePath);
 
       const { error: updateError } = await supabase
-        .from('restaurants')
+        .from('listings')
         .update({ photo_url: publicUrl })
         .eq('id', restaurant.id);
 
       if (updateError) throw updateError;
       
       // Optimistic update
-      setRestaurant(prev => ({ ...prev, photoUrl: publicUrl }));
+      setRestaurant(prev => ({ ...prev, photo_url: publicUrl }));
       setIsMenuOpen(false);
     } catch (error) {
       console.error('Error updating photo:', error);
@@ -256,19 +237,19 @@ export default function RestaurantDetailsModal({
       
       // 2. Update restaurant total reactions
       const { error: restaurantError } = await supabase
-        .from('restaurants')
+        .from('listings')
         .update({ [type]: (restaurant[type] || 0) + 1 })
         .eq('id', restaurant.id);
 
       if (restaurantError) throw restaurantError;
 
       // 3. Recalculate bestComment for the dish
-      if (review.dishId) {
+      if (review.dish_name) {
         const { data: dishReviewsData, error: dishReviewsError } = await supabase
           .from('reviews')
           .select('*')
-          .eq('restaurant_id', restaurant.id)
-          .eq('dish_id', review.dishId);
+          .eq('listing_id', restaurant.id)
+          .eq('dish_name', review.dish_name);
 
         if (dishReviewsError) throw dishReviewsError;
 
@@ -278,7 +259,7 @@ export default function RestaurantDetailsModal({
           dislikes: r.id === reviewId && type === 'dislikes' ? (r.dislikes || 0) + 1 : (r.dislikes || 0)
         }));
 
-        const reviewsWithComments = dishReviews.filter(r => r.comment && r.comment.trim().length > 0);
+        const reviewsWithComments = dishReviews.filter(r => r.text && r.text.trim().length > 0);
         const bestReview = reviewsWithComments.length > 0
           ? reviewsWithComments.reduce((prev, curr) => (curr.likes || 0) > (prev.likes || 0) ? curr : prev, reviewsWithComments[0])
           : null;
@@ -286,14 +267,14 @@ export default function RestaurantDetailsModal({
         const currentDishStats = restaurant.dishStats || {};
         const updatedDishStats = { ...currentDishStats };
         
-        if (updatedDishStats[review.dishId]) {
-          updatedDishStats[review.dishId] = {
-            ...updatedDishStats[review.dishId],
-            bestComment: bestReview?.comment
+        if (updatedDishStats[review.dish_name]) {
+          updatedDishStats[review.dish_name] = {
+            ...updatedDishStats[review.dish_name],
+            // bestComment: bestReview?.text // We don't have bestComment in the new schema, but we can store it in dishStats if we want
           };
           
           await supabase
-            .from('restaurants')
+            .from('listings')
             .update({ dish_stats: updatedDishStats })
             .eq('id', restaurant.id);
             
@@ -328,13 +309,13 @@ export default function RestaurantDetailsModal({
 
             {/* Header */}
             <div className="relative h-64 sm:h-80 bg-gray-100">
-              {restaurant.photoUrl ? (
+              {restaurant.photo_url ? (
                 <button 
-                  onClick={() => restaurant.photoUrl && setPreviewImage(restaurant.photoUrl)}
+                  onClick={() => restaurant.photo_url && setPreviewImage(restaurant.photo_url)}
                   className="relative w-full h-full group"
                 >
                   <img 
-                    src={restaurant.photoUrl} 
+                    src={restaurant.photo_url} 
                     alt={restaurant.name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     referrerPolicy="no-referrer"
@@ -467,7 +448,7 @@ export default function RestaurantDetailsModal({
                     const foundId = selectedDishes.find(id => {
                       const normalizedId = id.toLowerCase();
                       const matchingKey = Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedId);
-                      return matchingKey && restaurant.dishStats[matchingKey]?.bestComment;
+                      return matchingKey && restaurant.dishStats[matchingKey]?.reviewCount;
                     });
                     if (foundId) {
                       const normalizedId = foundId.toLowerCase();
@@ -480,7 +461,7 @@ export default function RestaurantDetailsModal({
 
                   const p = Math.round(activeDishId && restaurant.dishStats?.[activeDishId] 
                     ? restaurant.dishStats[activeDishId].avgPrice 
-                    : (restaurant.avgPrice || restaurant.price));
+                    : (restaurant.avg_price || 0));
                   if (selectedCategory === 'clothes') {
                     if (p < 100000) return 'text-green-600';
                     if (p <= 170000) return 'text-amber-600';
@@ -501,7 +482,7 @@ export default function RestaurantDetailsModal({
                       const foundId = selectedDishes.find(id => {
                         const normalizedId = id.toLowerCase();
                         const matchingKey = Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedId);
-                        return matchingKey && restaurant.dishStats[matchingKey]?.bestComment;
+                        return matchingKey && restaurant.dishStats[matchingKey]?.reviewCount;
                       });
                       if (foundId) {
                         const normalizedId = foundId.toLowerCase();
@@ -514,18 +495,18 @@ export default function RestaurantDetailsModal({
 
                     return Math.round(activeDishId && restaurant.dishStats?.[activeDishId] 
                       ? restaurant.dishStats[activeDishId].avgPrice 
-                      : (restaurant.avgPrice || restaurant.price)).toLocaleString();
+                      : (restaurant.avg_price || 0)).toLocaleString();
                   })()} {t('som')}
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{t('reviews')}</p>
-                <p className="text-sm font-bold text-gray-900">{restaurant.reviewCount}</p>
+                <p className="text-sm font-bold text-gray-900">{restaurant.totalReviewCount}</p>
               </div>
-              {restaurant.workingHours && (
+              {restaurant.working_hours && (
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2">
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{t('workingHours')}</p>
-                  <p className="text-sm font-bold text-gray-900">{restaurant.workingHours}</p>
+                  <p className="text-sm font-bold text-gray-900">{restaurant.working_hours}</p>
                 </div>
               )}
             </div>
@@ -559,7 +540,7 @@ export default function RestaurantDetailsModal({
                           : `${themeBgLight} ${themeText}`
                       }`}
                     >
-                      {dish ? t(dish.label) : (restaurant.dishStats?.[dishId]?.displayName || dishId)}
+                      {dish ? t(dish.label) : (restaurant.dishStats?.[dishId]?.name || dishId)}
                     </span>
                   );
                 })}
@@ -573,7 +554,7 @@ export default function RestaurantDetailsModal({
                   <h3 className="text-lg font-bold text-gray-900">{t('communityReviews')}</h3>
                   <div className={`flex items-center gap-1 ${themeText} text-sm font-bold mt-1`}>
                     <Star size={16} className={`fill-[${themeColor}]`} />
-                    <span>{restaurant.rating.toFixed(1)} / 5</span>
+                    <span>{(restaurant.totalAvgRating || 0).toFixed(1)} / 5</span>
                   </div>
                 </div>
                 <button
@@ -604,18 +585,18 @@ export default function RestaurantDetailsModal({
                             <User size={20} />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-gray-900">{review.submitter || t('anonymous')}</p>
+                            <p className="text-sm font-bold text-gray-900">{review.submitter_name || t('anonymous')}</p>
                             <p className="text-[10px] text-gray-400">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                              {review.priceSpent ? ` • ${review.priceSpent.toLocaleString()} ${t('som')}` : ''}
-                              {review.dishId && (
+                              {new Date(review.created_at).toLocaleDateString()}
+                              {review.price_paid ? ` • ${review.price_paid.toLocaleString()} ${t('som')}` : ''}
+                              {review.dish_name && (
                                 <>
                                   {' • '}
                                   <span className={`${themeText} font-bold`}>
                                     {(() => {
                                       const currentTypes = selectedCategory === 'food' ? DISH_TYPES : CLOTHING_TYPES;
-                                      const found = currentTypes.find(d => d.id === review.dishId);
-                                      return found ? t(found.label) : (restaurant.dishStats?.[review.dishId.toLowerCase()]?.displayName || review.dishId);
+                                      const found = currentTypes.find(d => d.id === review.dish_name);
+                                      return found ? t(found.label) : (restaurant.dishStats?.[review.dish_name.toLowerCase()]?.name || review.dish_name);
                                     })()}
                                   </span>
                                 </>
@@ -630,11 +611,11 @@ export default function RestaurantDetailsModal({
                       </div>
                       
                       <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                        {review.comment}
+                        {review.text}
                       </p>
 
                       {(() => {
-                        const allPhotos = review.photoUrls || (review.photoUrl ? [review.photoUrl] : []);
+                        const allPhotos = review.photo_urls || [];
                         if (allPhotos.length === 0) return null;
                         return (
                           <div className="flex flex-wrap gap-2 mb-4">
@@ -694,7 +675,7 @@ export default function RestaurantDetailsModal({
                 if (isIOS) {
                   setIsDirectionsOpen(true);
                 } else {
-                  const url = `geo:${restaurant.location.lat},${restaurant.location.lng}?q=${restaurant.location.lat},${restaurant.location.lng}(${encodeURIComponent(restaurant.name)})`;
+                  const url = `geo:${restaurant.latitude},${restaurant.longitude}?q=${restaurant.latitude},${restaurant.longitude}(${encodeURIComponent(restaurant.name)})`;
                   window.location.href = url;
                 }
               }}
@@ -745,7 +726,7 @@ export default function RestaurantDetailsModal({
       <DirectionsPicker 
         isOpen={isDirectionsOpen}
         onClose={() => setIsDirectionsOpen(false)}
-        location={restaurant.location}
+        location={{ lat: restaurant.latitude, lng: restaurant.longitude }}
         name={restaurant.name}
       />
     </AnimatePresence>

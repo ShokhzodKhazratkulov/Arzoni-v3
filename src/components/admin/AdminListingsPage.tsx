@@ -2,9 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   Search, 
-  Star, 
   CheckCircle2, 
-  MoreVertical, 
   MapPin, 
   ExternalLink, 
   Trash2, 
@@ -13,20 +11,20 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { 
-  fetchListings, 
+  getListingsWithStats, 
   deleteListing, 
-  verifyListing, 
-  toggleSponsored,
+  setListingVerified, 
+  setListingSponsored,
   updateListing
-} from '../../services/adminService';
-import { Restaurant } from '../../types';
+} from '../../services/listings';
+import { Listing } from '../../types';
 
 interface AdminListingsPageProps {
   initialFilter?: string;
 }
 
 export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFilter = 'all' }) => {
-  const [listings, setListings] = useState<Restaurant[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryTab, setCategoryTab] = useState<'all' | 'food' | 'clothes'>('all');
@@ -40,7 +38,7 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
   const loadListings = async () => {
     setLoading(true);
     try {
-      const data = await fetchListings();
+      const data = await getListingsWithStats({});
       setListings(data);
     } catch (error) {
       console.error('Error loading listings:', error);
@@ -69,8 +67,8 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
 
   const handleToggleSponsored = async (id: string, current: boolean) => {
     try {
-      await toggleSponsored(id, !current);
-      setListings(prev => prev.map(l => l.id === id ? { ...l, isSponsored: !current } : l));
+      await setListingSponsored(id, !current);
+      setListings(prev => prev.map(l => l.id === id ? { ...l, is_sponsored: !current } : l));
       showToast(current ? 'Promotion removed' : 'Listing promoted to top');
     } catch (error) {
       console.error('Error toggling sponsored:', error);
@@ -80,8 +78,8 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
 
   const handleVerify = async (id: string) => {
     try {
-      await verifyListing(id);
-      setListings(prev => prev.map(l => l.id === id ? { ...l, isVerified: true } : l));
+      await setListingVerified(id, true);
+      setListings(prev => prev.map(l => l.id === id ? { ...l, is_verified: true } : l));
       showToast('Listing marked as verified');
     } catch (error) {
       console.error('Error verifying listing:', error);
@@ -91,8 +89,8 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
 
   const handleUnverify = async (id: string) => {
     try {
-      await updateListing(id, { isVerified: false, verifiedExpiry: undefined });
-      setListings(prev => prev.map(l => l.id === id ? { ...l, isVerified: false } : l));
+      await setListingVerified(id, false);
+      setListings(prev => prev.map(l => l.id === id ? { ...l, is_verified: false } : l));
       showToast('Listing unverified');
     } catch (error) {
       console.error('Error unverifying listing:', error);
@@ -105,12 +103,12 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
       const matchesSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         l.address.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesCategory = categoryTab === 'all' || l.category === categoryTab;
+      const matchesCategory = categoryTab === 'all' || l.type === categoryTab;
       
       let matchesStatus = true;
-      if (statusFilter === 'sponsored') matchesStatus = !!l.isSponsored;
-      else if (statusFilter === 'verified') matchesStatus = !!l.isVerified;
-      else if (statusFilter === 'low-data') matchesStatus = (l.reviewCount || 0) <= 1;
+      if (statusFilter === 'sponsored') matchesStatus = !!l.is_sponsored;
+      else if (statusFilter === 'verified') matchesStatus = !!l.is_verified;
+      else if (statusFilter === 'low-data') matchesStatus = (l.totalReviewCount || 0) <= 1;
       
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -118,8 +116,8 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
 
   const counts = {
     all: listings.length,
-    food: listings.filter(l => l.category === 'food').length,
-    clothes: listings.filter(l => l.category === 'clothes').length,
+    food: listings.filter(l => l.type === 'food').length,
+    clothes: listings.filter(l => l.type === 'clothes').length,
   };
 
   return (
@@ -229,7 +227,7 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl overflow-hidden border border-gray-100 shrink-0">
                           <img 
-                            src={l.photoUrl || `https://picsum.photos/seed/${l.name}/100/100`} 
+                            src={`https://picsum.photos/seed/${l.name}/100/100`} 
                             alt={l.name} 
                             className="w-full h-full object-cover" 
                             referrerPolicy="no-referrer"
@@ -250,16 +248,16 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
                             {l.address}
                           </p>
                           <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-tighter ${
-                            l.category === 'food' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                            l.type === 'food' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                           }`}>
-                            {l.category === 'food' ? 'Ovqat' : 'Kiyim'}
+                            {l.type === 'food' ? 'Ovqat' : 'Kiyim'}
                           </span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col items-center gap-2">
-                        {l.isSponsored ? (
+                        {l.is_sponsored ? (
                           <>
                             <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg uppercase tracking-tighter border border-amber-100">
                               Sponsored
@@ -283,7 +281,7 @@ export const AdminListingsPage: React.FC<AdminListingsPageProps> = ({ initialFil
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col items-center gap-2">
-                        {l.isVerified ? (
+                        {l.is_verified ? (
                           <>
                             <div className="flex items-center gap-1 text-blue-600">
                               <CheckCircle2 size={16} />

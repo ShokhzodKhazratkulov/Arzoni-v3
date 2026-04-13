@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
-  LayoutDashboard, 
   Store, 
   Star, 
   CheckCircle2, 
@@ -11,15 +10,16 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { StatTile } from './StatTile';
-import { fetchListings, fetchBanners } from '../../services/adminService';
-import { Restaurant, Banner } from '../../types';
+import { getListingsWithStats } from '../../services/listings';
+import { getAllBanners } from '../../services/banners';
+import { Listing, Banner } from '../../types';
 
 interface AdminOverviewPageProps {
   onNavigate: (tab: 'restaurants' | 'banners', filter?: string) => void;
 }
 
 export const AdminOverviewPage: React.FC<AdminOverviewPageProps> = ({ onNavigate }) => {
-  const [listings, setListings] = useState<Restaurant[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,8 +27,8 @@ export const AdminOverviewPage: React.FC<AdminOverviewPageProps> = ({ onNavigate
     const loadData = async () => {
       try {
         const [listingsData, bannersData] = await Promise.all([
-          fetchListings(),
-          fetchBanners()
+          getListingsWithStats({}),
+          getAllBanners()
         ]);
         setListings(listingsData);
         setBanners(bannersData);
@@ -43,19 +43,19 @@ export const AdminOverviewPage: React.FC<AdminOverviewPageProps> = ({ onNavigate
 
   const stats = {
     total: listings.length,
-    food: listings.filter(l => l.category === 'food').length,
-    clothes: listings.filter(l => l.category === 'clothes').length,
-    sponsored: listings.filter(l => l.isSponsored).length,
-    verified: listings.filter(l => l.isVerified).length,
-    lowData: listings.filter(l => (l.reviewCount || 0) <= 1).length,
+    food: listings.filter(l => l.type === 'food').length,
+    clothes: listings.filter(l => l.type === 'clothes').length,
+    sponsored: listings.filter(l => l.is_sponsored).length,
+    verified: listings.filter(l => l.is_verified).length,
+    lowData: listings.filter(l => (l.totalReviewCount || 0) <= 1).length,
   };
 
   const topReviewed = [...listings]
-    .sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0))
+    .sort((a, b) => (b.totalReviewCount || 0) - (a.totalReviewCount || 0))
     .slice(0, 5);
 
   const recentBanners = [...banners]
-    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
     .slice(0, 5);
 
   if (loading) {
@@ -125,11 +125,11 @@ export const AdminOverviewPage: React.FC<AdminOverviewPageProps> = ({ onNavigate
                   <span className="text-xs font-black text-gray-300 w-4">{i + 1}</span>
                   <div>
                     <p className="text-sm font-bold text-gray-900">{l.name}</p>
-                    <p className="text-[10px] text-gray-400 uppercase font-black">{l.category}</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-black">{l.type}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-black text-amber-600">{l.reviewCount} reviews</p>
+                  <p className="text-sm font-black text-amber-600">{l.totalReviewCount} reviews</p>
                 </div>
               </div>
             ))}
@@ -159,13 +159,13 @@ export const AdminOverviewPage: React.FC<AdminOverviewPageProps> = ({ onNavigate
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">{b.restaurant_name || 'Unnamed Banner'}</p>
-                    <p className="text-[10px] text-gray-400">Expires: {new Date(b.expiry_date).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-gray-400">Expires: {new Date(b.end_date).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${
-                  new Date(b.expiry_date) >= new Date() ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
+                  new Date(b.end_date) >= new Date() ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
                 }`}>
-                  {new Date(b.expiry_date) >= new Date() ? 'Active' : 'Expired'}
+                  {new Date(b.end_date) >= new Date() ? 'Active' : 'Expired'}
                 </div>
               </div>
             ))}

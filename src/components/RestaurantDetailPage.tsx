@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, MapPin, Navigation, MessageSquare, TrendingUp, DollarSign, Globe } from 'lucide-react';
-import { Review, Restaurant, DishStats } from '../types';
+import { ChevronLeft, Star, Navigation, MessageSquare, TrendingUp, DollarSign, Globe } from 'lucide-react';
+import { Review, Listing, DishStats } from '../types';
 import { computeDishStats, filterReviewsByDishAndSort } from '../lib/stats';
-import { supabase } from '../supabase';
 import { useTranslation } from 'react-i18next';
 import { translateBatch } from '../services/translationService';
+import { getListingById } from '../services/listings';
+import { getReviewsByListingId } from '../services/reviews';
 
 export default function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,7 +14,7 @@ export default function RestaurantDetailPage() {
   const { t, i18n } = useTranslation();
   const [selectedDish, setSelectedDish] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'recent' | 'cheapest' | 'highest_rating'>('recent');
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [restaurant, setRestaurant] = useState<Listing | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [translatedReviews, setTranslatedReviews] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState(false);
@@ -24,48 +25,24 @@ export default function RestaurantDetailPage() {
       if (!id) return;
       setLoading(true);
 
-      // Fetch Restaurant
-      const { data: restData, error: restError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('id', id)
-        .single();
+      try {
+        const [restData, revData] = await Promise.all([
+          getListingById(id),
+          getReviewsByListingId(id)
+        ]);
 
-      if (restError) {
-        console.error('Error fetching restaurant:', restError);
-      } else if (restData) {
-        setRestaurant({
-          ...restData,
-          avgPrice: restData.avg_price || 0,
-          avgRating: restData.avg_rating || 0,
-          reviewCount: restData.review_count || 0,
-          photoUrl: restData.photo_url || '',
-          createdAt: restData.created_at || new Date().toISOString(),
-          location: restData.location || { lat: 41.2995, lng: 69.2401 },
-          rating: restData.rating || 0,
-        } as Restaurant);
+        if (restData) {
+          setRestaurant(restData);
+        }
+
+        if (revData) {
+          setReviews(revData);
+        }
+      } catch (error) {
+        console.error('Error fetching restaurant details:', error);
+      } finally {
+        setLoading(false);
       }
-
-      // Fetch Reviews
-      const { data: revData, error: revError } = await supabase
-        .from('reviews')
-        .select('*')
-        .eq('restaurant_id', id);
-
-      if (revError) {
-        console.error('Error fetching reviews:', revError);
-      } else if (revData) {
-        setReviews(revData.map(r => ({
-          ...r,
-          priceSpent: r.price_spent,
-          dishId: r.dish_id,
-          createdAt: r.created_at,
-          tags: r.tags || [],
-          photoUrls: r.photo_urls || [],
-        })) as Review[]);
-      }
-
-      setLoading(false);
     };
 
     fetchData();
@@ -76,7 +53,7 @@ export default function RestaurantDetailPage() {
       if (reviews.length === 0) return;
       
       setIsTranslating(true);
-      const comments = reviews.map(r => r.comment);
+      const comments = reviews.map(r => r.text || '');
       try {
         const translated = await translateBatch(comments, i18n.language);
         const newTranslations: Record<string, string> = {};
@@ -140,7 +117,7 @@ export default function RestaurantDetailPage() {
             <div className="flex flex-col">
               <p className="text-xs text-gray-400 font-bold">{restaurant.address}</p>
               <p className="text-[10px] text-gray-500 font-bold mt-0.5">
-                {t('workingHours')}: {restaurant.workingHours || t('noDataHours')}
+                {t('workingHours')}: {restaurant.working_hours || t('noDataHours')}
               </p>
             </div>
           </div>
@@ -199,7 +176,7 @@ export default function RestaurantDetailPage() {
               <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-50">
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase">{t('rating')}</p>
-                  <p className="text-lg font-black text-gray-900">{restaurant.rating.toFixed(1)}</p>
+                  <p className="text-lg font-black text-gray-900">{(restaurant.totalAvgRating || 0).toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase">{t('reviews')}</p>
@@ -277,14 +254,14 @@ export default function RestaurantDetailPage() {
           <div className="space-y-4">
             {filteredReviews.map((review) => (
               <div key={review.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-                <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
                       <MessageSquare size={20} />
                     </div>
                     <div>
-                      <p className="text-sm font-black text-gray-900">{review.submitter || t('anonymous')}</p>
-                      <p className="text-[10px] text-gray-400 font-bold">{new Date(review.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm font-black text-gray-900">{review.submitter_name || t('anonymous')}</p>
+                      <p className="text-[10px] text-gray-400 font-bold">{new Date(review.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg">
@@ -295,20 +272,20 @@ export default function RestaurantDetailPage() {
                 
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 bg-green-50 text-[#1D9E75] text-[10px] font-black rounded-md uppercase">
-                    {t(`dishes.${review.dishId.toLowerCase()}`, t(`clothes.${review.dishId.toLowerCase()}`, review.dishId))}
+                    {t(`dishes.${review.dish_name.toLowerCase()}`, t(`clothes.${review.dish_name.toLowerCase()}`, review.dish_name))}
                   </span>
                   <span className="text-xs font-black text-gray-900">
-                    {review.priceSpent.toLocaleString()} {t('som')}
+                    {review.price_paid.toLocaleString()} {t('som')}
                   </span>
                 </div>
 
                 <p className="text-sm text-gray-600 leading-relaxed italic">
-                  "{translatedReviews[review.id!] || review.comment}"
+                  "{translatedReviews[review.id!] || review.text}"
                 </p>
 
-                {review.photoUrls && review.photoUrls.length > 0 && (
+                {review.photo_urls && review.photo_urls.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {review.photoUrls.map((url, idx) => (
+                    {review.photo_urls.map((url, idx) => (
                       <img 
                         key={idx} 
                         src={url} 
@@ -337,7 +314,7 @@ export default function RestaurantDetailPage() {
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex gap-4">
         <button 
           onClick={() => {
-            const url = `geo:${restaurant.location.lat},${restaurant.location.lng}?q=${restaurant.location.lat},${restaurant.location.lng}(${encodeURIComponent(restaurant.name)})`;
+            const url = `geo:${restaurant.latitude},${restaurant.longitude}?q=${restaurant.latitude},${restaurant.longitude}(${encodeURIComponent(restaurant.name)})`;
             window.location.href = url;
           }}
           className="flex-1 bg-gray-100 text-gray-900 p-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-gray-200 transition-all"

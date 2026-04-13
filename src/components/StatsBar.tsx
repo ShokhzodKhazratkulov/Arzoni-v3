@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { Restaurant } from '../types';
+import { Listing } from '../types';
 
 interface StatsBarProps {
-  restaurants: Restaurant[];
+  restaurants: Listing[];
   selectedCategory: 'food' | 'clothes';
 }
 
@@ -11,7 +11,7 @@ export default function StatsBar({ restaurants, selectedCategory }: StatsBarProp
 
   const totalCount = restaurants.length;
   const cheapestPrice = restaurants.length > 0 
-    ? Math.min(...restaurants.map(r => r.avgPrice || r.price)) 
+    ? Math.min(...restaurants.map(r => r.avg_price || 0)) 
     : 0;
 
   return (

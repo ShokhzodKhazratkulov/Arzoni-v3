@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { supabase } from '../supabase';
-import { Restaurant } from '../types';
+import { Listing } from '../types';
 
 enum OperationType {
   CREATE = 'create',
@@ -38,7 +38,7 @@ interface AddRestaurantModalProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
   onAddReview: (restaurantId: string, reviewData: any) => void;
-  initialRestaurant?: Restaurant | null;
+  initialRestaurant?: Listing | null;
   selectedCategory: 'food' | 'clothes';
 }
 
@@ -159,15 +159,20 @@ export default function AddRestaurantModal({ isOpen, onClose, onSubmit, onAddRev
     
     try {
       await onSubmit({
-        ...formData,
-        submitter: formData.submitter.trim() || 'Anonymous',
-        category: formData.category,
-        rating: 0,
-        reviewCount: 0,
-        likes: 0,
-        dislikes: 0,
+        name: formData.name,
+        address: formData.address,
+        google_maps_url: formData.googleMapsUrl,
+        working_hours: formData.workingHours,
+        phone: formData.phone,
+        social_link: formData.socialLink,
+        latitude: formData.location.lat,
+        longitude: formData.location.lng,
+        type: formData.category,
+        is_active: true,
+        is_sponsored: false,
+        is_verified: false,
         photoFile: photoFile,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       });
       onClose();
     } catch (error: any) {

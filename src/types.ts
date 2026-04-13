@@ -5,97 +5,118 @@ export interface Location {
   lng: number;
 }
 
-export interface Restaurant {
-  id?: string;
+export type ListingType = 'food' | 'clothes';
+export type PriceFeeling = 'cheap' | 'fair' | 'expensive';
+export type PortionSize = 'small' | 'normal' | 'big';
+
+export interface Listing {
+  id: string;
   name: string;
+  type: ListingType;
   address: string;
-  category: 'food' | 'clothes';
+  latitude: number;
+  longitude: number;
+  working_hours?: string;
+  is_sponsored: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  photo_url?: string;
+  description?: string;
   dishes: string[];
-  price: number; // This will be the initial price or the computed avgPrice
-  avgPrice?: number;
-  rating: number; // This will be the computed avgRating
-  avgRating?: number;
-  reviewCount: number;
-  totalReviews?: number;
-  description: string;
-  submitter?: string;
-  location: Location;
-  workingHours?: string;
-  createdAt: string;
-  photoUrl?: string;
-  likes: number;
-  dislikes: number;
-  dishScore?: { [dishId: string]: number };
-  dishPrices?: { [dishId: string]: number };
-  dishStats?: {
-    [dishId: string]: {
-      avgPrice: number;
-      avgRating: number;
-      reviewCount: number;
-      bestComment?: string;
-      displayName?: string;
-    }
-  };
-  isSponsored?: boolean;
-  isVerified?: boolean;
-  sponsoredExpiry?: string;
-  verifiedExpiry?: string;
+  avg_price?: number;
+  totalAvgRating?: number;
+  totalReviewCount?: number;
+  likes?: number;
+  dislikes?: number;
+  created_at: string;
+  updated_at: string;
+  
+  // Computed fields (not in DB)
+  dishStats?: { [dishName: string]: DishStats };
+}
+
+export interface Dish {
+  id: string;
+  listing_id: string;
+  name: string;
+  created_at: string;
 }
 
 export interface Review {
-  id?: string;
-  restaurantId: string;
+  id: string;
+  listing_id: string;
+  dish_name: string;
+  price_paid: number;
   rating: number;
-  comment: string;
-  submitter: string;
-  createdAt: string;
-  photoUrl?: string;
-  photoUrls?: string[];
-  likes: number;
-  dislikes: number;
-  priceSpent: number;
-  dishId: string;
-  tags: string[];
+  visit_date?: string;
+  price_feeling?: PriceFeeling;
+  portion_size?: PortionSize;
+  title?: string;
+  text?: string;
+  tags?: string[];
+  submitter_name?: string;
+  photo_urls?: string[];
+  likes?: number;
+  dislikes?: number;
+  created_at: string;
+}
+
+export interface Banner {
+  id: string;
+  restaurant_id?: string;
+  name: string;
+  languages: string[];
+  start_date: string;
+  end_date: string;
+  position: number;
+  is_active: boolean;
+  is_paused: boolean;
+  category: ListingType;
+  image_url?: string;
+  image_url_uz?: string;
+  image_url_ru?: string;
+  image_url_en?: string;
+  created_at: string;
+  updated_at: string;
+  restaurant_name?: string; // Joined from listings
+}
+
+export interface Visit {
+  id: string;
+  session_id: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  visit_count: number;
+  user_agent?: string;
+  device_type: string;
+  country?: string;
+  city?: string;
+}
+
+export interface DishStats {
+  name: string;
+  avgPrice: number;
+  avgRating: number;
+  reviewCount: number;
+  popularity: number;
+  bestComment?: string;
+  displayName?: string;
 }
 
 export const DISH_TYPES = ['Osh', 'Somsa', 'Shashlik', 'Manti', 'Norin', 'Plov', 'Lagman', 'Chuchvara', 'Shorva', 'Dimlama'];
 export const CLOTHING_TYPES = ['T-shirt', 'Jeans', 'Dress', 'Shoes', 'Jacket', 'Shirt', 'Skirt', 'Pants', 'Sweater', 'Coat'];
 
-export interface Banner {
-  id: string;
-  image_url: string;
-  image_url_uz?: string;
-  image_url_ru?: string;
-  image_url_en?: string;
-  restaurant_id: string;
-  expiry_date: string;
-  created_at: string;
-  restaurant_name?: string; // For display in admin
-  category?: 'food' | 'clothes';
-  is_paused?: boolean;
-  position: number;
-  start_date?: string;
-}
-
-export type DishStats = {
-  name: string;          // "Osh"
-  avgPrice: number;      // 31250
-  avgRating: number;     // 4.0
-  reviewCount: number;   // 4
-  popularity: number;    // 0.8  (80%)
-};
-
 export type AddReviewFormState = {
-  dish: string;            // "Osh" / "Somsa" / "Custom"
+  dish: string;
   customDishName: string;
-  pricePaid: string;       // input value
-  rating: number;          // 1..5
-  visitDate: string;       // ISO date
-  priceFeeling: 'cheap' | 'fair' | 'expensive' | '';
-  portionSize: 'small' | 'normal' | 'big' | '';
+  pricePaid: string;
+  rating: number;
+  visitDate: string;
+  priceFeeling: PriceFeeling | '';
+  portionSize: PortionSize | '';
   title: string;
   text: string;
-  tags: string[];          // ["students", "big_portion"]
+  tags: string[];
 };
 
 export type SortOption = 'price_asc' | 'price_desc' | 'rating' | 'distance';

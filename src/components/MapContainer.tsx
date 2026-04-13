@@ -8,7 +8,7 @@ import {
   Pin
 } from '@vis.gl/react-google-maps';
 import { useTranslation } from 'react-i18next';
-import { Restaurant, DishStats } from '../types';
+import { Listing, DishStats } from '../types';
 import { TASHKENT_CENTER, DISH_TYPES } from '../constants';
 import { Navigation, Star, MapPin, Crosshair, Info, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -97,15 +97,14 @@ function MapPopupCard({
 }
 
 interface MapContainerProps {
-  restaurants: Restaurant[];
+  restaurants: Listing[];
   onAddRestaurant: () => void;
   selectedDishes?: string[];
   customDish?: string;
   selectedCategory: 'food' | 'clothes';
-  restaurantStatsMap: { [restaurantId: string]: DishStats[] };
 }
 
-const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customDish, selectedCategory, restaurantStatsMap }: MapContainerProps) => {
+const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customDish, selectedCategory }: MapContainerProps) => {
   const { t } = useTranslation();
   const map = useMap();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -125,22 +124,22 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
       return matchingKey || customDish;
     }
     
-    return selectedDishes.find(id => selectedRestaurant.dishStats?.[id]?.bestComment) || selectedDishes[0];
+    return selectedDishes.find(id => selectedRestaurant.dishStats?.[id]?.reviewCount) || selectedDishes[0];
   }, [selectedRestaurant, selectedDishes, customDish]);
 
   const displayPrice = selectedRestaurant 
     ? (activeDishId && selectedRestaurant.dishStats?.[activeDishId] 
         ? selectedRestaurant.dishStats[activeDishId].avgPrice 
-        : selectedRestaurant.price)
+        : (selectedRestaurant.avg_price || 0))
     : 0;
 
   const displayDescription = selectedRestaurant
-    ? (activeDishId && selectedRestaurant.dishStats?.[activeDishId]?.bestComment
-        ? `"${selectedRestaurant.dishStats[activeDishId].bestComment}"`
-        : selectedRestaurant.description)
+    ? (activeDishId && selectedRestaurant.dishStats?.[activeDishId]
+        ? `${selectedRestaurant.dishStats[activeDishId].reviewCount} reviews`
+        : selectedRestaurant.description || '')
     : '';
 
-  const isReview = !!(selectedRestaurant && activeDishId && selectedRestaurant.dishStats?.[activeDishId]?.bestComment);
+  const isReview = !!(selectedRestaurant && activeDishId && selectedRestaurant.dishStats?.[activeDishId]?.reviewCount);
 
   const handleFindMe = useCallback(() => {
     if (navigator.geolocation) {
@@ -198,7 +197,7 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
             const foundId = selectedDishes.find(id => {
               const normalizedId = id.toLowerCase();
               const matchingKey = Object.keys(restaurant.dishStats || {}).find(k => k.toLowerCase() === normalizedId);
-              return matchingKey && restaurant.dishStats[matchingKey]?.bestComment;
+              return matchingKey && restaurant.dishStats[matchingKey]?.reviewCount;
             });
 
             if (foundId) {
@@ -213,18 +212,18 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
 
           const displayPrice = activeDishId && restaurant.dishStats?.[activeDishId] 
             ? restaurant.dishStats[activeDishId].avgPrice 
-            : (restaurant.avgPrice || restaurant.price);
+            : (restaurant.avg_price || 0);
 
           const dishStats = activeDishId && restaurant.dishStats?.[activeDishId];
-          const rating = dishStats ? dishStats.avgRating : (restaurant.avgRating || 0);
-          const reviewCount = dishStats ? dishStats.reviewCount : (restaurant.reviewCount || 0);
+          const rating = dishStats ? dishStats.avgRating : (restaurant.totalAvgRating || 0);
+          const reviewCount = dishStats ? dishStats.reviewCount : (restaurant.totalReviewCount || 0);
           const shortPrice = displayPrice >= 1000 ? `${Math.round(displayPrice / 1000)}k` : displayPrice;
           const dishLabel = activeDishId ? t(`dishes.${activeDishId.toLowerCase()}`, t(`clothes.${activeDishId.toLowerCase()}`, activeDishId)) : '';
 
           return (
             <AdvancedMarker
               key={restaurant.id}
-              position={restaurant.location}
+              position={{ lat: restaurant.latitude, lng: restaurant.longitude }}
               onClick={() => setSelectedId(restaurant.id || null)}
             >
               <div className="relative group">
@@ -253,15 +252,15 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
 
         {selectedRestaurant && (
           <InfoWindow
-            position={selectedRestaurant.location}
+            position={{ lat: selectedRestaurant.latitude, lng: selectedRestaurant.longitude }}
             onCloseClick={() => setSelectedId(null)}
           >
             <MapPopupCard 
               restaurantName={selectedRestaurant.name}
               address={selectedRestaurant.address}
-              openingHoursLabel={selectedRestaurant.workingHours}
+              openingHoursLabel={selectedRestaurant.working_hours}
               selectedDish={selectedDishes[0] || (selectedCategory === 'food' ? 'Osh' : 'T-shirt')}
-              dishStatsForSelected={(restaurantStatsMap[selectedRestaurant.id!] || []).find(s => s.name === (selectedDishes[0] || (selectedCategory === 'food' ? 'Osh' : 'T-shirt'))) || null}
+              dishStatsForSelected={selectedRestaurant.dishStats?.[selectedDishes[0] || (selectedCategory === 'food' ? 'Osh' : 'T-shirt')] || null}
               onOpenDetails={() => setIsDetailsOpen(true)}
               onOpenDirections={() => {
                 if (selectedRestaurant) {
@@ -269,7 +268,7 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
                   if (isIOS) {
                     setIsDirectionsOpen(true);
                   } else {
-                    const url = `geo:${selectedRestaurant.location.lat},${selectedRestaurant.location.lng}?q=${selectedRestaurant.location.lat},${selectedRestaurant.location.lng}(${encodeURIComponent(selectedRestaurant.name)})`;
+                    const url = `geo:${selectedRestaurant.latitude},${selectedRestaurant.longitude}?q=${selectedRestaurant.latitude},${selectedRestaurant.longitude}(${encodeURIComponent(selectedRestaurant.name)})`;
                     window.location.href = url;
                   }
                 }
@@ -306,7 +305,7 @@ const MapContent = ({ restaurants, onAddRestaurant, selectedDishes = [], customD
         <DirectionsPicker 
           isOpen={isDirectionsOpen}
           onClose={() => setIsDirectionsOpen(false)}
-          location={selectedRestaurant.location}
+          location={{ lat: selectedRestaurant.latitude, lng: selectedRestaurant.longitude }}
           name={selectedRestaurant.name}
         />
       )}

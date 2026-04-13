@@ -7,11 +7,11 @@ export function computeDishStats(reviews: Review[]): DishStats[] {
   const dishMap: { [key: string]: { totalPrice: number; totalRating: number; count: number } } = {};
 
   reviews.forEach((review) => {
-    const dish = review.dishId || 'Unknown';
+    const dish = review.dish_name || 'Unknown';
     if (!dishMap[dish]) {
       dishMap[dish] = { totalPrice: 0, totalRating: 0, count: 0 };
     }
-    dishMap[dish].totalPrice += review.priceSpent || 0;
+    dishMap[dish].totalPrice += review.price_paid || 0;
     dishMap[dish].totalRating += review.rating || 0;
     dishMap[dish].count += 1;
   });
@@ -32,15 +32,15 @@ export function filterReviewsByDishAndSort(
 ): Review[] {
   let filtered = reviews;
   if (selectedDish !== 'All') {
-    filtered = reviews.filter((r) => r.dishId === selectedDish);
+    filtered = reviews.filter((r) => r.dish_name === selectedDish);
   }
 
   return [...filtered].sort((a, b) => {
     if (sortKey === 'recent') {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
     if (sortKey === 'cheapest') {
-      return (a.priceSpent || 0) - (b.priceSpent || 0);
+      return (a.price_paid || 0) - (b.price_paid || 0);
     }
     if (sortKey === 'highest_rating') {
       return b.rating - a.rating;

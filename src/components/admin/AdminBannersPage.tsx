@@ -4,10 +4,7 @@ import {
   Plus, 
   Trash2, 
   Edit3, 
-  Calendar, 
-  ImageIcon, 
   CheckCircle2, 
-  AlertCircle,
   X,
   Upload,
   ExternalLink,
@@ -17,19 +14,19 @@ import {
   Play
 } from 'lucide-react';
 import { 
-  fetchBanners, 
+  getAllBanners, 
   createBanner, 
   updateBanner, 
-  deleteBanner,
-  fetchListings
-} from '../../services/adminService';
-import { Banner, Restaurant } from '../../types';
+  deleteBanner
+} from '../../services/banners';
+import { getListingsWithStats } from '../../services/listings';
+import { Banner, Listing } from '../../types';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '../../supabase';
 
 export const AdminBannersPage: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [listings, setListings] = useState<Restaurant[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
@@ -59,8 +56,8 @@ export const AdminBannersPage: React.FC = () => {
     setLoading(true);
     try {
       const [bannersData, listingsData] = await Promise.all([
-        fetchBanners(),
-        fetchListings()
+        getAllBanners(),
+        getListingsWithStats({})
       ]);
       setBanners(bannersData);
       setListings(listingsData);
@@ -120,11 +117,13 @@ export const AdminBannersPage: React.FC = () => {
 
       const bannerData = {
         restaurant_id: formData.restaurant_id || null,
-        expiry_date: formData.expiry_date,
+        end_date: formData.expiry_date,
         start_date: formData.start_date,
         position: formData.position,
         category: formData.category,
         is_paused: formData.is_paused,
+        name: formData.name, // Add name field
+        is_active: !formData.is_paused, // Map is_paused to is_active
         // If editing, keep old URLs if no new ones uploaded
         image_url: urls.image_url_uz || urls.image_url_ru || urls.image_url_en || (editingBanner?.image_url),
         image_url_uz: urls.image_url_uz || (editingBanner?.image_url_uz),
@@ -164,8 +163,8 @@ export const AdminBannersPage: React.FC = () => {
 
   const handleTogglePause = async (banner: Banner) => {
     try {
-      await updateBanner(banner.id, { is_paused: !banner.is_paused });
-      setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, is_paused: !banner.is_paused } : b));
+      await updateBanner(banner.id, { is_paused: !banner.is_paused, is_active: banner.is_paused });
+      setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, is_paused: !banner.is_paused, is_active: banner.is_paused } : b));
     } catch (error) {
       console.error('Error toggling pause:', error);
     }
@@ -185,13 +184,13 @@ export const AdminBannersPage: React.FC = () => {
 
   const sortedBanners = useMemo(() => {
     return [...banners].sort((a, b) => {
-      if (sortOption === 'expiry') return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+      if (sortOption === 'expiry') return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
       if (sortOption === 'name') return (a.restaurant_name || '').localeCompare(b.restaurant_name || '');
       if (sortOption === 'position') return a.position - b.position;
       if (sortOption === 'status') {
         const getStatusOrder = (banner: Banner) => {
           const now = new Date();
-          if (new Date(banner.expiry_date) < now) return 3;
+          if (new Date(banner.end_date) < now) return 3;
           if (new Date(banner.start_date || '') > now) return 2;
           return 1;
         };
@@ -204,10 +203,10 @@ export const AdminBannersPage: React.FC = () => {
   const stats = {
     active: banners.filter(b => {
       const now = new Date();
-      return new Date(b.expiry_date) >= now && new Date(b.start_date || '') <= now && !b.is_paused;
+      return new Date(b.end_date) >= now && new Date(b.start_date || '') <= now && !b.is_paused;
     }).length,
     upcoming: banners.filter(b => new Date(b.start_date || '') > new Date()).length,
-    expired: banners.filter(b => new Date(b.expiry_date) < new Date()).length,
+    expired: banners.filter(b => new Date(b.end_date) < new Date()).length,
   };
 
   const openEditForm = (banner: Banner) => {
@@ -215,7 +214,7 @@ export const AdminBannersPage: React.FC = () => {
     setFormData({
       name: banner.restaurant_name || '',
       restaurant_id: banner.restaurant_id || '',
-      expiry_date: new Date(banner.expiry_date).toISOString().split('T')[0],
+      expiry_date: new Date(banner.end_date).toISOString().split('T')[0],
       start_date: new Date(banner.start_date || Date.now()).toISOString().split('T')[0],
       position: banner.position || 1,
       category: banner.category || 'food',
@@ -333,7 +332,7 @@ export const AdminBannersPage: React.FC = () => {
               ) : (
                 sortedBanners.map(b => {
                   const now = new Date();
-                  const isExpired = new Date(b.expiry_date) < now;
+                  const isExpired = new Date(b.end_date) < now;
                   const isUpcoming = new Date(b.start_date || '') > now;
                   const status = b.is_paused ? 'PAUSED' : isExpired ? 'EXPIRED' : isUpcoming ? 'SCHEDULED' : 'ACTIVE';
                   
@@ -367,7 +366,7 @@ export const AdminBannersPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <p className="text-xs font-bold text-gray-600">{new Date(b.expiry_date).toLocaleDateString()}</p>
+                        <p className="text-xs font-bold text-gray-600">{new Date(b.end_date).toLocaleDateString()}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center">
@@ -559,7 +558,7 @@ export const AdminBannersPage: React.FC = () => {
                   >
                     <option value="">No link</option>
                     {listings
-                      .filter(l => l.category === formData.category)
+                      .filter(l => l.type === formData.category)
                       .map(l => (
                         <option key={l.id} value={l.id}>{l.name}</option>
                       ))

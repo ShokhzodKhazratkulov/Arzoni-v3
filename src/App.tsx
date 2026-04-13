@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
-import { supabase } from './supabase';
-import { seedDatabase } from './seed';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { computeDishStats } from './lib/stats';
 import AddReviewPage from './components/AddReviewPage';
 import RestaurantDetailPage from './components/RestaurantDetailPage';
-import { DishStats, Restaurant, Review, Banner, SortOption } from './types';
+import { Listing, Banner, SortOption, ListingType } from './types';
 import { PRICE_RANGES, CLOTHING_PRICE_RANGES } from './constants';
 import Navbar from './components/Navbar';
 import FilterBar from './components/FilterBar';
@@ -19,6 +16,10 @@ import { AlertTriangle, Map as MapIcon, LayoutList, MapPin } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { NotificationHandler } from './components/NotificationHandler';
+import { getListingsWithStats, createListing } from './services/listings';
+import { getActiveBanners } from './services/banners';
+import { createReview } from './services/reviews';
+import { useVisitTracking } from './lib/useVisitTracking';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -89,14 +90,17 @@ function AppContent() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { isAdmin } = useAuth();
+  
+  // Track anonymous visit
+  useVisitTracking();
+
   const [showAdmin, setShowAdmin] = useState(false);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'food' | 'clothes'>('food');
+  const [selectedCategory, setSelectedCategory] = useState<ListingType>('food');
   const [selectedDish, setSelectedDish] = useState<string>('Osh');
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('all');
   const [customPrice, setCustomPrice] = useState<number>(0);
@@ -104,124 +108,55 @@ function AppContent() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isAddRestaurantOpen, setIsAddRestaurantOpen] = useState(false);
 
-  useEffect(() => {
+  const fetchData = async () => {
     setLoading(true);
-    seedDatabase();
+    try {
+      const listingsData = await getListingsWithStats({
+        type: selectedCategory,
+        selectedDish: selectedDish,
+        sort: sortOption
+      });
+      setListings(listingsData);
 
-    const fetchData = async () => {
-      // Fetch Restaurants
-      const { data: restData, error: restError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('category', selectedCategory);
-
-      if (restError) console.error('Error fetching restaurants:', restError);
-      
-      // Fetch Reviews
-      const { data: revData, error: revError } = await supabase
-        .from('reviews')
-        .select('*');
-
-      if (revError) console.error('Error fetching reviews:', revError);
-
-      if (restData) {
-        const mappedRest = restData.map(r => ({
-          ...r,
-          avgPrice: r.avg_price,
-          avgRating: r.avg_rating,
-          reviewCount: r.review_count,
-          photoUrl: r.photo_url,
-          createdAt: r.created_at,
-          location: r.location,
-        }));
-        setRestaurants(mappedRest as Restaurant[]);
-      }
-
-      if (revData) {
-        const mappedRev = revData.map(r => ({
-          ...r,
-          priceSpent: r.price_spent,
-          dishId: r.dish_id,
-          createdAt: r.created_at,
-          restaurantId: r.restaurant_id,
-        }));
-        setAllReviews(mappedRev as Review[]);
-      }
-
+      const bannersData = await getActiveBanners();
+      setBanners(bannersData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchData();
+  }, [selectedCategory, selectedDish, sortOption]);
 
-    // Banners
-    const fetchBanners = async () => {
-      const { data, error } = await supabase
-        .from('banners')
-        .select('*, restaurants(name, category)')
-        .gte('expiry_date', new Date().toISOString());
-
-      if (error) console.error('Error fetching banners:', error);
-      else {
-        setBanners((data || []).map((b: any) => ({
-          ...b,
-          restaurant_name: b.restaurants?.name,
-          category: b.restaurants?.category
-        })) as Banner[]);
-      }
-    };
-    fetchBanners();
-  }, [selectedCategory]);
-
-  const restaurantStatsMap = useMemo(() => {
-    const statsMap: { [restaurantId: string]: DishStats[] } = {};
-    restaurants.forEach(r => {
-      if (r.id) {
-        const restaurantReviews = allReviews.filter(rev => rev.restaurantId === r.id);
-        statsMap[r.id] = computeDishStats(restaurantReviews);
-      }
-    });
-    return statsMap;
-  }, [restaurants, allReviews]);
-
-  const filteredRestaurants = useMemo(() => {
-    return restaurants.filter(restaurant => {
-      if (!restaurant.id) return false;
-      const stats = restaurantStatsMap[restaurant.id] || [];
-      const dishStats = stats.find(s => s.name === selectedDish);
+  const filteredListings = useMemo(() => {
+    return listings.filter(listing => {
+      const stats = listing.dishStats?.[selectedDish];
       
-      // Restaurants with zero reviews for that dish must not appear in the list
-      if (!dishStats) return false;
-
       // Price filter
       let matchesPrice = true;
-      if (selectedPriceRange !== 'all') {
+      if (selectedPriceRange !== 'all' && stats) {
         const ranges = selectedCategory === 'food' ? PRICE_RANGES : CLOTHING_PRICE_RANGES;
         const range = ranges.find(r => r.id === selectedPriceRange);
         if (range) {
-          matchesPrice = dishStats.avgPrice >= range.min && dishStats.avgPrice <= range.max;
+          matchesPrice = stats.avgPrice >= range.min && stats.avgPrice <= range.max;
         } else if (selectedPriceRange === 'custom') {
-          matchesPrice = customPrice === 0 || dishStats.avgPrice <= customPrice;
+          matchesPrice = customPrice === 0 || stats.avgPrice <= customPrice;
         }
       }
 
       return matchesPrice;
-    }).sort((a, b) => {
-      if (!a.id || !b.id) return 0;
-      const statsA = (restaurantStatsMap[a.id] || []).find(s => s.name === selectedDish);
-      const statsB = (restaurantStatsMap[b.id] || []).find(s => s.name === selectedDish);
-
-      if (!statsA || !statsB) return 0;
-
-      if (sortOption === 'price_asc') return statsA.avgPrice - statsB.avgPrice;
-      if (sortOption === 'price_desc') return statsB.avgPrice - statsA.avgPrice;
-      if (sortOption === 'rating') return statsB.avgRating - statsA.avgRating;
-      return 0;
     });
-  }, [restaurants, restaurantStatsMap, selectedDish, selectedPriceRange, customPrice, sortOption, selectedCategory]);
+  }, [listings, selectedDish, selectedPriceRange, customPrice, selectedCategory]);
 
   const filteredBanners = useMemo(() => {
-    return banners.filter(b => b.category === selectedCategory);
-  }, [banners, selectedCategory]);
+    // In the new schema, banners might not have a category directly, 
+    // but we can filter by the linked listing's category if needed.
+    // For now, we'll assume banners are relevant to the selected category or generic.
+    return banners;
+  }, [banners]);
 
   useEffect(() => {
     if (filteredBanners.length <= 1 || isBannerPaused) return;
@@ -234,67 +169,49 @@ function AppContent() {
   }, [filteredBanners.length, isBannerPaused]);
 
   const handleBannerClick = (banner: Banner) => {
-    navigate(`/restaurants/${banner.restaurant_id}`);
+    if (banner.restaurant_id) {
+      navigate(`/restaurants/${banner.restaurant_id}`);
+    }
   };
 
   const handleAddRestaurant = async (data: any) => {
-    const { photoFile, ...rest } = data;
-    let photoUrl = '';
-
-    if (photoFile) {
-      const fileName = `${Date.now()}-${photoFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('restaurant-photos')
-        .upload(fileName, photoFile);
-
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage
-        .from('restaurant-photos')
-        .getPublicUrl(fileName);
-      photoUrl = publicUrl;
+    try {
+      await createListing({
+        name: data.name,
+        type: selectedCategory,
+        address: data.address,
+        latitude: data.location.lat,
+        longitude: data.location.lng,
+        working_hours: data.workingHours,
+        is_active: true
+      });
+      fetchData();
+      setIsAddRestaurantOpen(false);
+    } catch (error) {
+      console.error('Error adding restaurant:', error);
+      throw error;
     }
-
-    const { error } = await supabase.from('restaurants').insert([{
-      ...rest,
-      photo_url: photoUrl,
-      avg_price: rest.price,
-      avg_rating: 0,
-      review_count: 0
-    }]);
-
-    if (error) throw error;
-    window.location.reload();
   };
 
-  const handleAddReview = async (restaurantId: string, reviewData: any) => {
-    const { photoFiles, ...rest } = reviewData;
-    const photoUrls: string[] = [];
-
-    if (photoFiles && photoFiles.length > 0) {
-      for (const file of photoFiles) {
-        const fileName = `${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('review-photos')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage
-          .from('review-photos')
-          .getPublicUrl(fileName);
-        photoUrls.push(publicUrl);
-      }
+  const handleAddReview = async (listingId: string, reviewData: any) => {
+    try {
+      await createReview({
+        listing_id: listingId,
+        dish_name: reviewData.dish === 'Custom' ? reviewData.customDishName : reviewData.dish,
+        price_paid: parseInt(reviewData.pricePaid),
+        rating: reviewData.rating,
+        visit_date: reviewData.visitDate,
+        price_feeling: reviewData.priceFeeling,
+        portion_size: reviewData.portionSize,
+        title: reviewData.title,
+        text: reviewData.text,
+        tags: reviewData.tags
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error adding review:', error);
+      throw error;
     }
-
-    const { error } = await supabase.from('reviews').insert([{
-      ...rest,
-      restaurant_id: restaurantId,
-      photo_urls: photoUrls,
-      price_spent: rest.priceSpent,
-      dish_id: rest.dishId
-    }]);
-
-    if (error) throw error;
-    window.location.reload();
   };
 
   const getBannerImage = (banner: Banner) => {
@@ -360,7 +277,7 @@ function AppContent() {
               <FilterBar 
                 selectedCategory={selectedCategory}
                 setSelectedCategory={(cat) => {
-                  setSelectedCategory(cat);
+                  setSelectedCategory(cat as ListingType);
                   setSelectedDish(cat === 'food' ? 'Osh' : 'T-shirt');
                   setSelectedPriceRange('all');
                 }}
@@ -421,29 +338,27 @@ function AppContent() {
                   </div>
 
                   <MapContainer 
-                    restaurants={filteredRestaurants}
+                    restaurants={filteredListings}
                     onAddRestaurant={() => setIsAddRestaurantOpen(true)}
                     selectedDishes={[selectedDish]}
                     selectedCategory={selectedCategory}
-                    restaurantStatsMap={restaurantStatsMap}
                   />
                 </div>
               ) : (
                 <RestaurantList 
-                  restaurants={filteredRestaurants}
+                  restaurants={filteredListings}
                   sortOption={sortOption}
                   setSortOption={setSortOption}
                   onAddReview={(r) => navigate(`/restaurants/${r.id}/review`)}
                   onAddRestaurantClick={() => setIsAddRestaurantOpen(true)}
                   selectedDishes={[selectedDish]}
                   selectedCategory={selectedCategory}
-                  restaurantStatsMap={restaurantStatsMap}
                 />
               )}
             </main>
           } />
           <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
-          <Route path="/restaurants/:id/review" element={<AddReviewPage />} />
+          <Route path="/restaurants/:id/review" element={<AddReviewPage onReviewAdded={fetchData} />} />
         </Routes>
 
         <AddRestaurantModal 

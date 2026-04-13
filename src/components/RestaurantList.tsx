@@ -1,18 +1,17 @@
 import { useTranslation } from 'react-i18next';
-import { Restaurant, SortOption, DishStats } from '../types';
+import { Listing, SortOption, DishStats } from '../types';
 import RestaurantCard from './RestaurantCard';
 import { ArrowUpDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface RestaurantListProps {
-  restaurants: Restaurant[];
+  restaurants: Listing[];
   sortOption: SortOption;
   setSortOption: (option: SortOption) => void;
-  onAddReview: (restaurant: Restaurant) => void;
+  onAddReview: (restaurant: Listing) => void;
   onAddRestaurantClick: () => void;
   selectedDishes: string[];
   selectedCategory: 'food' | 'clothes';
-  restaurantStatsMap: { [restaurantId: string]: DishStats[] };
 }
 
 export default function RestaurantList({ 
@@ -22,8 +21,7 @@ export default function RestaurantList({
   onAddReview, 
   onAddRestaurantClick,
   selectedDishes, 
-  selectedCategory,
-  restaurantStatsMap
+  selectedCategory
 }: RestaurantListProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -87,8 +85,7 @@ export default function RestaurantList({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {restaurants.map(restaurant => {
-            const stats = restaurantStatsMap[restaurant.id!] || [];
-            const dishStatsForSelected = stats.find(s => s.name === selectedDish) || null;
+            const dishStatsForSelected = restaurant.dishStats?.[selectedDish] || null;
             
             return (
               <RestaurantCard 
@@ -96,13 +93,13 @@ export default function RestaurantList({
                 restaurantId={restaurant.id!}
                 name={restaurant.name}
                 area={restaurant.address}
-                workingHours={restaurant.workingHours}
+                workingHours={restaurant.working_hours}
                 selectedDish={selectedDish}
                 dishStatsForSelected={dishStatsForSelected}
-                allDishStats={stats}
+                allDishStats={Object.values(restaurant.dishStats || {})}
                 onViewReviews={(id) => navigate(`/restaurants/${id}`)}
                 onGetDirections={(id) => {
-                  const url = `geo:${restaurant.location.lat},${restaurant.location.lng}?q=${restaurant.location.lat},${restaurant.location.lng}(${encodeURIComponent(restaurant.name)})`;
+                  const url = `geo:${restaurant.latitude},${restaurant.longitude}?q=${restaurant.latitude},${restaurant.longitude}(${encodeURIComponent(restaurant.name)})`;
                   window.location.href = url;
                 }}
               />
