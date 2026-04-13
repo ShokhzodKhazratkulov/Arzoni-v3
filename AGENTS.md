@@ -19,7 +19,6 @@
     - Image upload with compression.
     - Link banners to specific restaurants.
     - Set expiry dates.
-- **Push Notifications**: Implemented using OneSignal. Admin can send broadcasts from the Admin Center.
 
 ### 3. Monetization Features
 - **Sponsored Listings**: Implemented sorting logic in `App.tsx` that prioritizes `isSponsored: true` restaurants regardless of other filters/sorts.
@@ -34,10 +33,6 @@ The Supabase database now includes:
 ---
 
 ## Roadmap & Next Steps for the Next AI Agent
-
-### Phase 2: Push Notifications (COMPLETED)
-- Integrated OneSignal for Web Push.
-- Built the "Notification Center" in the Admin Center to send blasts to all users.
 
 ### Phase 3: Business Portal
 - Allow restaurant owners to log in and see their own listing stats.

@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Map as MapIcon, LayoutList, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
-import { NotificationHandler } from './components/NotificationHandler';
 import { getListingsWithStats, createListing } from './services/listings';
 import { getActiveBanners } from './services/banners';
 import { createReview } from './services/reviews';
@@ -229,7 +228,6 @@ function AppContent() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-        <NotificationHandler />
         <Navbar onAdminClick={() => setShowAdmin(true)} />
         
         <Routes>
